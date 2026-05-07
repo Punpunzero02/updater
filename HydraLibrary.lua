@@ -1222,6 +1222,60 @@ end
 
 
 
+
+
+
+-- tabs = { { label, colorKey } }
+-- returns { bar, buttons={}, pages={}, switchTo(i) }
+function HydraUI:sidebar(parent, tabs)
+    local bar = self:frame(parent, UDim2.new(0, 46, 1, -24), UDim2.new(0, 0, 0, 24), "PANEL")
+    self:stroke(bar, self.T.STROKE, 1)
+    self:trackElement(bar, "PANEL", "BackgroundColor3")
+    self:listLayout(bar, 2)
+    self:padding(bar, 3, 3, 3, 3)
+
+    local btns  = {}
+    local pages = {}
+
+    for i, tab in ipairs(tabs) do
+        local colorKey = tab.colorKey or "ACCENT"
+        local b = self:button(bar, tab.label,
+            UDim2.new(1, 0, 0, 34), nil,
+            "CARD", colorKey, 6
+        )
+        b.LayoutOrder = i
+        b.TextWrapped = true
+        self:strokeKeyed(b, colorKey, 1)
+        self:trackElement(b, "CARD",   "BackgroundColor3")
+        self:trackElement(b, colorKey, "TextColor3")
+        btns[i] = b
+
+        local pg = self:frame(parent,
+            UDim2.new(1, -50, 1, -24),
+            UDim2.new(0, 48, 0, 24),
+            "BG", 1
+        )
+        pg.Visible = (i == 1)
+        pages[i]   = pg
+        self:trackElement(pg, "BG", "BackgroundColor3")
+    end
+
+    local function switchTo(idx)
+        for i, pg in ipairs(pages) do
+            pg.Visible = (i == idx)
+            local colorKey = tabs[i].colorKey or "ACCENT"
+            btns[i].BackgroundColor3 = (i == idx) and self.T.CARD or self.T.PANEL
+            btns[i].TextColor3       = self.T[colorKey]
+        end
+    end
+
+    for i in ipairs(tabs) do
+        btns[i].MouseButton1Click:Connect(function() switchTo(i) end)
+    end
+
+    return { bar = bar, buttons = btns, pages = pages, switchTo = switchTo }
+end
+
 function HydraUI:inlinePicker(guiParent, config)
 	local zIdx = config.zIndex or 70
 	local strokeKey = config.strokeColorKey or "ACCENT"
@@ -1367,59 +1421,5 @@ function HydraUI:inlinePicker(guiParent, config)
 		end,
 	}
 end
-
-
--- tabs = { { label, colorKey } }
--- returns { bar, buttons={}, pages={}, switchTo(i) }
-function HydraUI:sidebar(parent, tabs)
-    local bar = self:frame(parent, UDim2.new(0, 46, 1, -24), UDim2.new(0, 0, 0, 24), "PANEL")
-    self:stroke(bar, self.T.STROKE, 1)
-    self:trackElement(bar, "PANEL", "BackgroundColor3")
-    self:listLayout(bar, 2)
-    self:padding(bar, 3, 3, 3, 3)
-
-    local btns  = {}
-    local pages = {}
-
-    for i, tab in ipairs(tabs) do
-        local colorKey = tab.colorKey or "ACCENT"
-        local b = self:button(bar, tab.label,
-            UDim2.new(1, 0, 0, 34), nil,
-            "CARD", colorKey, 6
-        )
-        b.LayoutOrder = i
-        b.TextWrapped = true
-        self:strokeKeyed(b, colorKey, 1)
-        self:trackElement(b, "CARD",   "BackgroundColor3")
-        self:trackElement(b, colorKey, "TextColor3")
-        btns[i] = b
-
-        local pg = self:frame(parent,
-            UDim2.new(1, -50, 1, -24),
-            UDim2.new(0, 48, 0, 24),
-            "BG", 1
-        )
-        pg.Visible = (i == 1)
-        pages[i]   = pg
-        self:trackElement(pg, "BG", "BackgroundColor3")
-    end
-
-    local function switchTo(idx)
-        for i, pg in ipairs(pages) do
-            pg.Visible = (i == idx)
-            local colorKey = tabs[i].colorKey or "ACCENT"
-            btns[i].BackgroundColor3 = (i == idx) and self.T.CARD or self.T.PANEL
-            btns[i].TextColor3       = self.T[colorKey]
-        end
-    end
-
-    for i in ipairs(tabs) do
-        btns[i].MouseButton1Click:Connect(function() switchTo(i) end)
-    end
-
-    return { bar = bar, buttons = btns, pages = pages, switchTo = switchTo }
-end
-
-
 
 return HydraUI
