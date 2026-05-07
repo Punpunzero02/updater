@@ -1220,6 +1220,155 @@ function HydraUI:window(guiParent, w, h, title)
 end
 
 
+
+
+function HydraUI:inlinePicker(guiParent, config)
+	local zIdx = config.zIndex or 70
+	local strokeKey = config.strokeColorKey or "ACCENT"
+	local multi = config.multiSelect or false
+	local selected = multi and {} or (config.default or nil)
+	local _cb = config.onSelect
+
+	local row = self:frame(config.parent, UDim2.new(1,-4,0,16), nil, "CARD")
+	self:corner(row, 3)
+	self:strokeKeyed(row, strokeKey, 1)
+
+	local lblLeft = self:label(row, config.label or "Mode", UDim2.new(0,60,1,0), UDim2.new(0,4,0,0), "TEXT", 9)
+	lblLeft.Font = Enum.Font.GothamBold
+
+	local valLbl = self:label(row, config.default or "Select...", UDim2.new(1,-80,1,0), UDim2.new(0,66,0,0), strokeKey, 9)
+	valLbl.Font = Enum.Font.GothamBold
+
+	local arrowLbl = self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-16,0,0), "DIM", 8, Enum.TextXAlignment.Center)
+
+	local overlay = self:frame(guiParent, UDim2.new(0,220,0,200), UDim2.new(0,0,0,0), "PANEL")
+	overlay.Visible = false
+	overlay.ZIndex = zIdx
+	self:corner(overlay, 5)
+	self:strokeKeyed(overlay, strokeKey, 1)
+
+	local ohdr = self:frame(overlay, UDim2.new(1,0,0,20), nil, Color3.fromRGB(10,16,36))
+	self:corner(ohdr, 5)
+	local otitle = self:label(ohdr, config.label or "Mode", UDim2.new(1,-24,1,0), UDim2.new(0,6,0,0), strokeKey, 9)
+	otitle.Font = Enum.Font.GothamBold
+	otitle.ZIndex = zIdx+1
+	local xBtn = self:button(ohdr, "x", UDim2.new(0,14,0,14), UDim2.new(1,-17,0.5,-7), "ERROR", "TEXT", 8)
+	xBtn.ZIndex = zIdx+1
+
+	local searchBox = Instance.new("TextBox", overlay)
+	searchBox.Size = UDim2.new(1,-8,0,16)
+	searchBox.Position = UDim2.new(0,4,0,23)
+	searchBox.BackgroundColor3 = Color3.fromRGB(10,16,36)
+	searchBox.BorderSizePixel = 0
+	searchBox.PlaceholderText = "Search..."
+	searchBox.Text = ""
+	searchBox.TextColor3 = self.T.TEXT
+	searchBox.PlaceholderColor3 = self.T.DIM
+	searchBox.Font = Enum.Font.Gotham
+	searchBox.TextSize = 8
+	searchBox.ClearTextOnFocus = false
+	searchBox.ZIndex = zIdx+1
+	self:corner(searchBox, 3)
+	self:strokeKeyed(searchBox, "STROKE", 1)
+
+	local scrl = self:scroll(overlay, UDim2.new(1,-4,1,-42), UDim2.new(0,2,0,42))
+	scrl.ZIndex = zIdx
+	self:listLayout(scrl, 2)
+	self:padding(scrl, 2,3,3,2)
+
+	local function getSelName()
+		if multi then
+			local names = {}
+			for _, item in ipairs(config.items or {}) do
+				if selected[item.key] then table.insert(names, item.name) end
+			end
+			return #names > 0 and table.concat(names, ", ") or "Select..."
+		else
+			for _, item in ipairs(config.items or {}) do
+				if item.key == selected then return item.name end
+			end
+			return "Select..."
+		end
+	end
+
+	local function rebuild(q)
+		for _, c in ipairs(scrl:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
+		local ql = string.lower(q or "")
+		for i, item in ipairs(config.items or {}) do
+			if ql ~= "" and not string.lower(item.name):find(ql,1,true) then continue end
+			local isSel = multi and selected[item.key] or selected == item.key
+			local btn = self:button(scrl, item.name,
+				UDim2.new(1,0,0,22), nil,
+				isSel and strokeKey or "ROW",
+				isSel and "SEL_TXT" or "TEXT", 9)
+			btn.Font = Enum.Font.GothamBold
+			btn.LayoutOrder = i
+			btn.ZIndex = zIdx+2
+			self:corner(btn, 3)
+			self:strokeKeyed(btn, isSel and strokeKey or "STROKE", 1)
+			local kc = item.key
+			btn.MouseButton1Click:Connect(function()
+				if multi then
+					if selected[kc] then selected[kc]=nil else selected[kc]=true end
+					rebuild(searchBox.Text)
+					valLbl.Text = getSelName()
+					if _cb then
+						local res={}
+						for k in pairs(selected) do table.insert(res,k) end
+						_cb(res)
+					end
+				else
+					selected = kc
+					valLbl.Text = getSelName()
+					overlay.Visible = false
+					searchBox.Text = ""
+					if _cb then _cb(kc) end
+				end
+			end)
+		end
+	end
+
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function() rebuild(searchBox.Text) end)
+	xBtn.MouseButton1Click:Connect(function() overlay.Visible=false searchBox.Text="" end)
+
+	local hitBtn = self:button(row, "", UDim2.new(1,0,1,0), nil, "CARD", "TEXT", 8)
+	hitBtn.BackgroundTransparency = 1
+	hitBtn.ZIndex = 5
+	hitBtn.MouseButton1Click:Connect(function()
+		if overlay.Visible then
+			overlay.Visible = false
+			searchBox.Text = ""
+		else
+			local abs = row.AbsolutePosition
+			local absSize = row.AbsoluteSize
+			overlay.Position = UDim2.new(0, abs.X, 0, abs.Y + absSize.Y + 2)
+			rebuild("")
+			overlay.Visible = true
+		end
+	end)
+
+	return {
+		row = row,
+		overlay = overlay,
+		Set = function(v)
+			if multi and type(v)=="table" then
+				table.clear(selected)
+				for _,k in ipairs(v) do selected[k]=true end
+			else selected = v end
+			valLbl.Text = getSelName()
+		end,
+		Get = function()
+			if multi then
+				local res={}
+				for k in pairs(selected) do table.insert(res,k) end
+				return res
+			end
+			return selected
+		end,
+	}
+end
+
+
 -- tabs = { { label, colorKey } }
 -- returns { bar, buttons={}, pages={}, switchTo(i) }
 function HydraUI:sidebar(parent, tabs)
