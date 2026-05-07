@@ -372,7 +372,7 @@ function HydraUI:searchBar(parent, sz, pos, placeholder)
     return { bar = bar, box = box }
 end
 
--- Stat Box (untuk queue tab: Pending / Listed / Free Slots)
+-- Stat Box (for queue: Pending / Listed / Free Slots)
 -- returns numLabel yang bisa di-set .Text
 function HydraUI:statBox(parent, x, colorKey, labelText)
     local card = self:frame(parent, UDim2.new(0, 52, 1, 0), UDim2.new(0, x, 0, 0), "CARD")
@@ -543,7 +543,7 @@ function HydraUI:confirmDialog(guiParent, config)
     return overlay
 end
 
--- Buy Confirm Dialog (versi spesifik untuk purchase listing)
+-- Buy Confirm Dialog (specific version for hydra script)
 -- listing = { petType, mutName, level, weight, price }
 -- onConfirm = function()
 -- returns overlay Frame
@@ -796,7 +796,7 @@ end
 
 -- Mutation Picker Overlay (multi-select)
 -- config = {
---    mutationList  = { { code, name } },  -- array, first entry bisa {code="ANY",name="Any"}
+--    mutationList  = { { code, name } },  -- array, first entry  {code="ANY",name="Any"}
 --    selectedMuts  = {},                   -- table of selected codes
 --    onSelect      = function(selectedList),
 --    zIndex        = number (default 60),
@@ -1276,14 +1276,16 @@ function HydraUI:sidebar(parent, tabs)
     return { bar = bar, buttons = btns, pages = pages, switchTo = switchTo }
 end
 
-function HydraUI:inlinePicker(guiParent, config)
+
+
+function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
 	local zIdx = config.zIndex or 70
 	local strokeKey = config.strokeColorKey or "ACCENT"
 	local multi = config.multiSelect or false
 	local selected = multi and {} or (config.default or nil)
 	local _cb = config.onSelect
 
-	local row = self:frame(config.parent, UDim2.new(1,-4,0,16), nil, "CARD")
+	local row = self:frame(rowParent, UDim2.new(1,-4,0,16), nil, "CARD")
 	self:corner(row, 3)
 	self:strokeKeyed(row, strokeKey, 1)
 
@@ -1293,9 +1295,9 @@ function HydraUI:inlinePicker(guiParent, config)
 	local valLbl = self:label(row, config.default or "Select...", UDim2.new(1,-80,1,0), UDim2.new(0,66,0,0), strokeKey, 9)
 	valLbl.Font = Enum.Font.GothamBold
 
-	local arrowLbl = self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-16,0,0), "DIM", 8, Enum.TextXAlignment.Center)
+	self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-16,0,0), "DIM", 8, Enum.TextXAlignment.Center)
 
-	local overlay = self:frame(guiParent, UDim2.new(0,220,0,200), UDim2.new(0,0,0,0), "PANEL")
+	local overlay = self:frame(overlayParent, UDim2.new(0,220,0,200), UDim2.new(0,0,0,0), "PANEL")
 	overlay.Visible = false
 	overlay.ZIndex = zIdx
 	self:corner(overlay, 5)
@@ -1351,8 +1353,7 @@ function HydraUI:inlinePicker(guiParent, config)
 		for i, item in ipairs(config.items or {}) do
 			if ql ~= "" and not string.lower(item.name):find(ql,1,true) then continue end
 			local isSel = multi and selected[item.key] or selected == item.key
-			local btn = self:button(scrl, item.name,
-				UDim2.new(1,0,0,22), nil,
+			local btn = self:button(scrl, item.name, UDim2.new(1,0,0,22), nil,
 				isSel and strokeKey or "ROW",
 				isSel and "SEL_TXT" or "TEXT", 9)
 			btn.Font = Enum.Font.GothamBold
@@ -1408,7 +1409,9 @@ function HydraUI:inlinePicker(guiParent, config)
 			if multi and type(v)=="table" then
 				table.clear(selected)
 				for _,k in ipairs(v) do selected[k]=true end
-			else selected = v end
+			else
+				selected = v
+			end
 			valLbl.Text = getSelName()
 		end,
 		Get = function()
