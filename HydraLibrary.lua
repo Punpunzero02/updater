@@ -1319,6 +1319,36 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	local xBtn = self:button(ohdr, "x", UDim2.new(0,14,0,14), UDim2.new(1,-17,0.5,-7), "ERROR", "TEXT", 8)
 	xBtn.ZIndex = zIdx+1
 
+	-- DRAG LOGIC
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		ohdr.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1
+			or i.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = i.Position
+				startPos = overlay.Position
+				i.Changed:Connect(function()
+					if i.UserInputState == Enum.UserInputState.End then
+						dragging = false
+					end
+				end)
+			end
+		end)
+		UIS.InputChanged:Connect(function(i)
+			if dragging and (
+				i.UserInputType == Enum.UserInputType.MouseMovement or
+				i.UserInputType == Enum.UserInputType.Touch
+			) then
+				local delta = i.Position - dragStart
+				overlay.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+	end
+
 	local searchBox = Instance.new("TextBox", overlay)
 	searchBox.Size = UDim2.new(1,-8,0,16)
 	searchBox.Position = UDim2.new(0,4,0,23)
