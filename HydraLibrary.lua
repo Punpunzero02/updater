@@ -1286,11 +1286,10 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	local _cb = config.onSelect
 	local isStatic = config.staticLabel ~= nil
 
-local row = self:frame(rowParent, UDim2.new(1,-4,0,16), nil, "BG", 1)
-self:corner(row, 3)
-if not config.transparent then
-    self:strokeKeyed(row, strokeKey, 1)
-end
+	local row = self:frame(rowParent, UDim2.new(1,-4,0,16), nil, "ROW")
+	row.BackgroundTransparency = 0
+	self:corner(row, 3)
+	self:strokeKeyed(row, "STROKE", 1)
 
 	if not isStatic then
 		local lblLeft = self:label(row, config.label or "Mode", UDim2.new(0,60,1,0), UDim2.new(0,4,0,0), "TEXT", 9)
@@ -1300,10 +1299,11 @@ end
 	local initText = isStatic and config.staticLabel or (config.default or "Select...")
 	local valLblX = isStatic and 4 or 66
 	local valLblW = isStatic and UDim2.new(1,-18,1,0) or UDim2.new(1,-80,1,0)
-	local valLbl = self:label(row, initText, valLblW, UDim2.new(0,valLblX,0,0), strokeKey, 9)
+	local valLbl = self:label(row, initText, valLblW, UDim2.new(0,valLblX,0,0), "TEXT2", 9)
 	valLbl.Font = Enum.Font.GothamBold
+	valLbl.TextXAlignment = Enum.TextXAlignment.Right
 
-	self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-16,0,0), "DIM", 8, Enum.TextXAlignment.Center)
+	self:label(row, "▼", UDim2.new(0,12,1,0), UDim2.new(1,-13,0,0), "DIM", 7, Enum.TextXAlignment.Center)
 
 	local overlay = self:frame(overlayParent, UDim2.new(0,220,0,200), UDim2.new(0,0,0,0), "PANEL")
 	overlay.Visible = false
@@ -1432,6 +1432,5 @@ end
 		end,
 	}
 end
-
 
 return HydraUI
