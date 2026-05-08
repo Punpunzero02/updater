@@ -1278,21 +1278,29 @@ end
 
 
 
-function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
+function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	local zIdx = config.zIndex or 70
 	local strokeKey = config.strokeColorKey or "ACCENT"
 	local multi = config.multiSelect or false
 	local selected = multi and {} or (config.default or nil)
 	local _cb = config.onSelect
+	local isStatic = config.staticLabel ~= nil
 
-	local row = self:frame(rowParent, UDim2.new(1,-4,0,16), nil, "CARD")
-	self:corner(row, 3)
-	self:strokeKeyed(row, strokeKey, 1)
+local row = self:frame(rowParent, UDim2.new(1,-4,0,16), nil, "BG", 1)
+self:corner(row, 3)
+if not config.transparent then
+    self:strokeKeyed(row, strokeKey, 1)
+end
 
-	local lblLeft = self:label(row, config.label or "Mode", UDim2.new(0,60,1,0), UDim2.new(0,4,0,0), "TEXT", 9)
-	lblLeft.Font = Enum.Font.GothamBold
+	if not isStatic then
+		local lblLeft = self:label(row, config.label or "Mode", UDim2.new(0,60,1,0), UDim2.new(0,4,0,0), "TEXT", 9)
+		lblLeft.Font = Enum.Font.GothamBold
+	end
 
-	local valLbl = self:label(row, config.default or "Select...", UDim2.new(1,-80,1,0), UDim2.new(0,66,0,0), strokeKey, 9)
+	local initText = isStatic and config.staticLabel or (config.default or "Select...")
+	local valLblX = isStatic and 4 or 66
+	local valLblW = isStatic and UDim2.new(1,-18,1,0) or UDim2.new(1,-80,1,0)
+	local valLbl = self:label(row, initText, valLblW, UDim2.new(0,valLblX,0,0), strokeKey, 9)
 	valLbl.Font = Enum.Font.GothamBold
 
 	self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-16,0,0), "DIM", 8, Enum.TextXAlignment.Center)
@@ -1366,7 +1374,7 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
 				if multi then
 					if selected[kc] then selected[kc]=nil else selected[kc]=true end
 					rebuild(searchBox.Text)
-					valLbl.Text = getSelName()
+					if not isStatic then valLbl.Text = getSelName() end
 					if _cb then
 						local res={}
 						for k in pairs(selected) do table.insert(res,k) end
@@ -1374,7 +1382,7 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
 					end
 				else
 					selected = kc
-					valLbl.Text = getSelName()
+					if not isStatic then valLbl.Text = getSelName() end
 					overlay.Visible = false
 					searchBox.Text = ""
 					if _cb then _cb(kc) end
@@ -1412,7 +1420,7 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
 			else
 				selected = v
 			end
-			valLbl.Text = getSelName()
+			if not isStatic then valLbl.Text = getSelName() end
 		end,
 		Get = function()
 			if multi then
@@ -1424,5 +1432,6 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config) -- Pick mode
 		end,
 	}
 end
+
 
 return HydraUI
