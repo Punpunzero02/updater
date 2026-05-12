@@ -408,7 +408,42 @@ function VoidUI:inlinePickerDropdown(rowParent, overlayParent, config)
 	}
 end
 
+function VoidUI:accordionScroll(parent, title, lo, startOpen, config)
+	local cfg = config or {}
+	local T = self.T
+	local header = self:frame(parent, UDim2.new(1,0,0,32), nil, Color3.fromRGB(3,3,3))
+	header.LayoutOrder = lo
+	self:corner(header, 6)
+	self:stroke(header, T.ACCENT, 1)
+	self:label(header, title, UDim2.new(1,-40,1,0), UDim2.new(0,12,0,0), T.ACCENT, 10)
+	local arrow = self:label(header, startOpen and "v" or ">", UDim2.new(0,20,1,0), UDim2.new(1,-26,0,0), T.DIM, 11, Enum.TextXAlignment.Center)
+	local hitBtn = self:button(header, "", UDim2.new(1,0,1,0), nil, T.BTN, T.TEXT)
+	hitBtn.BackgroundTransparency = 1
+	hitBtn.ZIndex = 5
 
+	local body = self:frame(parent, UDim2.new(1,0,0,0), nil, Color3.fromRGB(3,3,3))
+	body.LayoutOrder = lo + 1
+	body.Visible = startOpen ~= false
+	self:corner(body, 6)
+	self:stroke(body, T.ACCENT, 1)
+
+	local inner = self:scroll(body, UDim2.new(1,0,0,0))
+	inner.Size = UDim2.new(1,0,0, cfg.height or 300)
+	inner.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	inner.ScrollBarThickness = 3
+	inner.ScrollBarImageColor3 = T.ACCENT
+
+	self:list(inner, cfg.gap or 5)
+	self:pad(inner, cfg.pt or 8, cfg.pl or 8, cfg.pr or 8, cfg.pb or 8)
+
+	local isOpen = startOpen ~= false
+	hitBtn.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		body.Visible = isOpen
+		arrow.Text = isOpen and "v" or ">"
+	end)
+	return { Header=header, Body=body, Inner=inner, Arrow=arrow }
+end
 
 
 return VoidUI
