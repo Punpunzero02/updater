@@ -142,31 +142,49 @@ function VoidUI:toggle(parent, pos, initState, onChange)
 	return { Set = function(v) state = v and true or false; apply(state) end, Get = function() return state end, Frame = box }
 end
 
+-- FIXED: Simple left/right cycle picker — no floating dropdown, no scroll-overlap bug
 function VoidUI:inlinePicker(parent, options, currentVal, onSelect, size, pos)
 	local T = self.T
 	local container = self:frame(parent, size or UDim2.new(1, 0, 0, 28), pos, T.BTN)
 	self:corner(container, 5)
 	self:stroke(container, T.STROKE, 1)
+
 	local selectedIdx = 1
 	for i, v in ipairs(options) do
 		if v == currentVal then selectedIdx = i; break end
 	end
+
+	-- Left arrow button
 	local leftBtn = self:button(container, "<", UDim2.new(0, 28, 1, -2), UDim2.new(0, 1, 0, 1), T.PANEL, T.ACCENT, 13)
 	self:corner(leftBtn, 4)
 	leftBtn.Font = Enum.Font.GothamBold
-	local display = self:label(container, options[selectedIdx] or "", UDim2.new(1, -62, 1, 0), UDim2.new(0, 30, 0, 0), T.ACCENT, 9, Enum.TextXAlignment.Center)
+
+	-- Center display label
+	local display = self:label(
+		container,
+		options[selectedIdx] or "",
+		UDim2.new(1, -62, 1, 0),
+		UDim2.new(0, 30, 0, 0),
+		T.ACCENT, 9,
+		Enum.TextXAlignment.Center
+	)
 	display.Font = Enum.Font.GothamBold
 	display.TextTruncate = Enum.TextTruncate.AtEnd
+
+	-- Right arrow button
 	local rightBtn = self:button(container, ">", UDim2.new(0, 28, 1, -2), UDim2.new(1, -29, 0, 1), T.PANEL, T.ACCENT, 13)
 	self:corner(rightBtn, 4)
 	rightBtn.Font = Enum.Font.GothamBold
+
 	local function pick(idx)
 		selectedIdx = ((idx - 1) % #options) + 1
 		display.Text = options[selectedIdx]
 		if typeof(onSelect) == "function" then onSelect(options[selectedIdx]) end
 	end
+
 	leftBtn.MouseButton1Click:Connect(function() pick(selectedIdx - 1) end)
 	rightBtn.MouseButton1Click:Connect(function() pick(selectedIdx + 1) end)
+
 	return {
 		Get = function() return options[selectedIdx] end,
 		Set = function(v)
@@ -210,97 +228,183 @@ function VoidUI:accordion(parent, title, lo, startOpen)
 	return { Header = header, Body = body, Inner = inner, Arrow = arrow }
 end
 
-function VoidUI.fmtTime(secs)
-	secs = math.floor(secs)
-	local h = math.floor(secs / 3600)
-	local m = math.floor((secs % 3600) / 60)
-	local s = secs % 60
-	if h > 0 then return string.format("%dh %dm %ds", h, m, s)
-	elseif m > 0 then return string.format("%dm %ds", m, s)
-	else return string.format("%ds", s) end
-end
 
-function VoidUI:buildPetList(scrollFrame, activePets, selMap, onToggle, searchTxt, getKGFn, getInvFn, isFavFn, getAgeFn)
-	local T = self.T
-	for _, c in ipairs(scrollFrame:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
-	local search = string.lower(searchTxt or "")
-	local inv = getInvFn()
-	local list = {}
-	for uuid in pairs(inv) do table.insert(list, uuid) end
-	table.sort(list, function(a, b)
-		local aA = activePets[a] and 1 or 0
-		local bA = activePets[b] and 1 or 0
-		if aA ~= bA then return aA > bA end
-		return getKGFn(a) > getKGFn(b)
-	end)
-	for i, uuid in ipairs(list) do
-		local d = inv[uuid]; if not d then continue end
-		local petType = d.PetType or "?"
-		if search ~= "" and not petType:lower():find(search, 1, true) then continue end
-		local isActive = activePets[uuid]
-		local isSel = selMap[uuid] == true
-		local age = d.PetData and (d.PetData.Level or 0) or 0
-		local kg = getKGFn(uuid)
-		local base = d.PetData and (d.PetData.BaseWeight or 0) or 0
-		local fv = isFavFn(uuid) and " ❤" or ""
-		local activeTxt = isActive and " (active)" or ""
-		local txt = string.format("[%s%s%s]  Age %d  |  %.2f KG  |  Base %.2f", petType, activeTxt, fv, age, kg, base)
-		local row = self:button(scrollFrame, txt, UDim2.new(1, 0, 0, 26), nil,
-			isSel and T.SEL_BG or (isActive and T.ACTIVE_BG or Color3.fromRGB(13, 13, 13)),
-			isSel and T.SEL_TXT or (isActive and T.ACTIVE_TXT or T.TEXT), 9)
-		row.LayoutOrder = i
-		row.TextXAlignment = Enum.TextXAlignment.Left
-		self:pad(row, 0, 8, 4, 0)
-		self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
-		row.MouseButton1Click:Connect(function() onToggle(uuid, petType, kg, isActive) end)
+
+
+function VoidUI:inlinePickerDropdown(rowParent, overlayParent, config)
+	local zIdx = config.zIndex or 70
+	local strokeCol = config.strokeColor or self.T.ACCENT
+	local multi = config.multiSelect or false
+	local selected = multi and {} or (config.default or nil)
+	local _cb = config.onSelect
+	local isStatic = config.staticLabel ~= nil
+
+	-- Row container
+	local row = self:frame(rowParent, config.size or UDim2.new(1, 0, 0, 28), config.pos, self.T.BTN)
+	self:corner(row, 5)
+	self:stroke(row, self.T.STROKE, 1)
+
+	if not isStatic then
+		local lblLeft = self:label(row, config.label or "Mode", UDim2.new(0, 70, 1, 0), UDim2.new(0, 6, 0, 0), self.T.TEXT, 10)
+		lblLeft.Font = Enum.Font.GothamBold
 	end
-end
 
-function VoidUI:boostPicker(parent, boostOptions, selMap, onClose)
-	local T = self.T
-	local ov = self:frame(parent, UDim2.new(1, 0, 1, 0), nil, T.BG)
-	ov.ZIndex = 40
-	ov.Visible = false
-	local hdr = self:frame(ov, UDim2.new(1, 0, 0, 28), nil, T.PANEL)
-	self:stroke(hdr, T.STROKE, 1)
-	self:label(hdr, "Select Boost", UDim2.new(1, -60, 1, 0), UDim2.new(0, 8, 0, 0), T.ACCENT, 10)
-	local doneBtn = self:button(hdr, "Done", UDim2.new(0, 44, 0, 22), UDim2.new(1, -48, 0.5, -11), T.ACCENT, T.SEL_TXT, 9)
-	self:stroke(doneBtn, T.ACCENT, 1)
-	local searchBox = self:input(ov, "", "Search boost...", UDim2.new(1, -8, 0, 22), UDim2.new(0, 4, 0, 32))
-	searchBox.TextColor3 = T.TEXT
-	local sf = self:scroll(ov, UDim2.new(1, 0, 1, -58), UDim2.new(0, 0, 0, 58))
-	self:list(sf, 4)
-	self:pad(sf, 4, 6, 6, 4)
-	local function rebuild()
-		for _, c in ipairs(sf:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
-		local query = string.lower(searchBox.Text)
-		for i, b in ipairs(boostOptions) do
-			if query ~= "" and not b.name:lower():find(query, 1, true) then continue end
-			local isSel = selMap[b.name] == true
-			local row = self:button(sf, b.name, UDim2.new(1, 0, 0, 28), nil,
-				isSel and T.SEL_BG or T.BTN,
-				isSel and T.SEL_TXT or T.TEXT, 10)
-			row.LayoutOrder = i
-			row.TextXAlignment = Enum.TextXAlignment.Center
-			self:corner(row, 6)
-			self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
-			row.MouseButton1Click:Connect(function()
-				if selMap[b.name] then selMap[b.name] = nil
-				else selMap[b.name] = true end
-				rebuild()
+	local valLblX = isStatic and 6 or 78
+	local valLblW = isStatic and UDim2.new(1, -20, 1, 0) or UDim2.new(1, -92, 1, 0)
+	local valLbl = self:label(row, isStatic and config.staticLabel or (config.default or "Select..."),
+		valLblW, UDim2.new(0, valLblX, 0, 0), self.T.ACCENT, 10)
+	valLbl.Font = Enum.Font.GothamBold
+	valLbl.TextXAlignment = Enum.TextXAlignment.Right
+
+	self:label(row, "▼", UDim2.new(0, 14, 1, 0), UDim2.new(1, -15, 0, 0), self.T.DIM, 8, Enum.TextXAlignment.Center)
+
+	-- Overlay dropdown
+	local overlay = self:frame(overlayParent, UDim2.new(0, 230, 0, 210), UDim2.new(0, 0, 0, 0), self.T.PANEL)
+	overlay.Visible = false
+	overlay.ZIndex = zIdx
+	self:corner(overlay, 6)
+	self:stroke(overlay, strokeCol, 1)
+
+	-- Header overlay (draggable)
+	local ohdr = self:frame(overlay, UDim2.new(1, 0, 0, 24), nil, Color3.fromRGB(10, 10, 18))
+	self:corner(ohdr, 6)
+	local otitle = self:label(ohdr, config.label or "Select", UDim2.new(1, -28, 1, 0), UDim2.new(0, 8, 0, 0), strokeCol, 10)
+	otitle.Font = Enum.Font.GothamBold
+	otitle.ZIndex = zIdx + 1
+	local xBtn = self:button(ohdr, "x", UDim2.new(0, 18, 0, 18), UDim2.new(1, -20, 0.5, -9), self.T.BTN, self.T.TEXT, 10)
+	xBtn.ZIndex = zIdx + 1
+	self:stroke(xBtn, self.T.STROKE, 1)
+
+	-- Drag logic
+	local UIS = game:GetService("UserInputService")
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		ohdr.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1
+			or i.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = i.Position
+				startPos = overlay.Position
+				i.Changed:Connect(function()
+					if i.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		UIS.InputChanged:Connect(function(i)
+			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
+			or i.UserInputType == Enum.UserInputType.Touch) then
+				local delta = i.Position - dragStart
+				overlay.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+	end
+
+	-- Search box di overlay
+	local searchBox = self:input(overlay, "", "Search...", UDim2.new(1, -8, 0, 20), UDim2.new(0, 4, 0, 28))
+	searchBox.TextColor3 = self.T.TEXT
+	searchBox.TextSize = 9
+	searchBox.ZIndex = zIdx + 1
+
+	-- Scroll list
+	local scrl = self:scroll(overlay, UDim2.new(1, -4, 1, -52), UDim2.new(0, 2, 0, 50))
+	scrl.ZIndex = zIdx
+	self:list(scrl, 3)
+	self:pad(scrl, 3, 3, 3, 3)
+
+	local function getSelName()
+		if multi then
+			local names = {}
+			for _, item in ipairs(config.items or {}) do
+				if selected[item.key] then table.insert(names, item.name) end
+			end
+			return #names > 0 and table.concat(names, ", ") or "Select..."
+		else
+			for _, item in ipairs(config.items or {}) do
+				if item.key == selected then return item.name end
+			end
+			return "Select..."
+		end
+	end
+
+	local function rebuild(q)
+		for _, c in ipairs(scrl:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
+		local ql = string.lower(q or "")
+		for i, item in ipairs(config.items or {}) do
+			if ql ~= "" and not string.lower(item.name):find(ql, 1, true) then continue end
+			local isSel = multi and (selected[item.key] == true) or (selected == item.key)
+			local btn = self:button(scrl, item.name, UDim2.new(1, 0, 0, 24), nil,
+				isSel and strokeCol or self.T.BTN,
+				isSel and self.T.SEL_TXT or self.T.TEXT, 10)
+			btn.Font = Enum.Font.GothamBold
+			btn.LayoutOrder = i
+			btn.ZIndex = zIdx + 2
+			self:corner(btn, 4)
+			self:stroke(btn, isSel and strokeCol or self.T.STROKE, 1)
+			local kc = item.key
+			btn.MouseButton1Click:Connect(function()
+				if multi then
+					if selected[kc] then selected[kc] = nil else selected[kc] = true end
+					rebuild(searchBox.Text)
+					if not isStatic then valLbl.Text = getSelName() end
+					if _cb then
+						local res = {}
+						for k in pairs(selected) do table.insert(res, k) end
+						_cb(res)
+					end
+				else
+					selected = kc
+					if not isStatic then valLbl.Text = getSelName() end
+					overlay.Visible = false
+					searchBox.Text = ""
+					if _cb then _cb(kc) end
+				end
 			end)
 		end
 	end
-	searchBox:GetPropertyChangedSignal("Text"):Connect(rebuild)
-	doneBtn.MouseButton1Click:Connect(function()
-		ov.Visible = false
-		if onClose then onClose() end
+
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function() rebuild(searchBox.Text) end)
+	xBtn.MouseButton1Click:Connect(function() overlay.Visible = false; searchBox.Text = "" end)
+
+	-- Hit button buat buka overlay
+	local hitBtn = self:button(row, "", UDim2.new(1, 0, 1, 0), nil, self.T.BTN, self.T.TEXT, 10)
+	hitBtn.BackgroundTransparency = 1
+	hitBtn.ZIndex = 5
+	hitBtn.MouseButton1Click:Connect(function()
+		if overlay.Visible then
+			overlay.Visible = false
+			searchBox.Text = ""
+		else
+			local abs = row.AbsolutePosition
+			local absSize = row.AbsoluteSize
+			overlay.Position = UDim2.new(0, abs.X, 0, abs.Y + absSize.Y + 4)
+			rebuild("")
+			overlay.Visible = true
+		end
 	end)
-	rebuild()
+
 	return {
-		Frame = ov,
-		Open = function() ov.Visible = true; rebuild() end,
-		Close = function() ov.Visible = false end,
+		row = row,
+		overlay = overlay,
+		Set = function(v)
+			if multi and type(v) == "table" then
+				table.clear(selected)
+				for _, k in ipairs(v) do selected[k] = true end
+			else
+				selected = v
+			end
+			if not isStatic then valLbl.Text = getSelName() end
+		end,
+		Get = function()
+			if multi then
+				local res = {}
+				for k in pairs(selected) do table.insert(res, k) end
+				return res
+			end
+			return selected
+		end,
 	}
 end
 
