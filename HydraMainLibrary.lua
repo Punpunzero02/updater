@@ -421,20 +421,27 @@ function VoidUI:accordionScroll(parent, title, lo, startOpen, config)
 	hitBtn.BackgroundTransparency = 1
 	hitBtn.ZIndex = 5
 
-	local body = self:frame(parent, UDim2.new(1,0,0,0), nil, Color3.fromRGB(3,3,3))
+	local innerH = cfg.height or 300
+	local padT   = cfg.pt or 8
+	local padB   = cfg.pb or 8
+	local padL   = cfg.pl or 8
+	local padR   = cfg.pr or 8
+	local gap    = cfg.gap or 5
+	local totalH = innerH + padT + padB
+
+	local body = self:frame(parent, UDim2.new(1,0,0,totalH), nil, Color3.fromRGB(3,3,3))
 	body.LayoutOrder = lo + 1
 	body.Visible = startOpen ~= false
 	self:corner(body, 6)
 	self:stroke(body, T.ACCENT, 1)
 
-	local inner = self:scroll(body, UDim2.new(1,0,0,0))
-	inner.Size = UDim2.new(1,0,0, cfg.height or 300)
+	local inner = self:scroll(body, UDim2.new(1,0,0,innerH), UDim2.new(0,0,0,padT))
 	inner.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	inner.ScrollBarThickness = 3
 	inner.ScrollBarImageColor3 = T.ACCENT
 
-	self:list(inner, cfg.gap or 5)
-	self:pad(inner, cfg.pt or 8, cfg.pl or 8, cfg.pr or 8, cfg.pb or 8)
+	self:list(inner, gap)
+	self:pad(inner, 0, padL, padR, 0)
 
 	local isOpen = startOpen ~= false
 	hitBtn.MouseButton1Click:Connect(function()
@@ -444,6 +451,5 @@ function VoidUI:accordionScroll(parent, title, lo, startOpen, config)
 	end)
 	return { Header=header, Body=body, Inner=inner, Arrow=arrow }
 end
-
 
 return VoidUI
