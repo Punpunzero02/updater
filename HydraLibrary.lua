@@ -1463,4 +1463,181 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	}
 end
 
+function HydraUI:loadingScreen(config)
+    config = config or {}
+    local title     = config.title     or "H Y D R A"
+    local accentCol = config.accentCol or Color3.fromRGB(200, 10, 10)
+    local glowCol   = config.glowCol   or Color3.fromRGB(120, 0, 0)
+    local bgCol     = config.bgCol     or Color3.fromRGB(7, 6, 10)
+    local tags      = config.tags      or {"AUTO BUY", "AUTO SELL", "SNIPE"}
+    local logoId    = config.logoId    or "rbxassetid://5669312242"
+    local statuses  = config.statuses  or {
+        {text="INITIALIZING...",       pct=0.15},
+        {text="LOADING MODULES...",    pct=0.40},
+        {text="CONNECTING MARKET...",  pct=0.65},
+        {text="SYNCING BOOTH DATA...", pct=0.85},
+        {text="READY.",                pct=1.00},
+    }
+
+    local CoreGui = game:GetService("CoreGui")
+    local TS      = game:GetService("TweenService")
+
+    if CoreGui:FindFirstChild("HydraLoadingScreen") then
+        CoreGui.HydraLoadingScreen:Destroy()
+    end
+
+    local LoadGui = Instance.new("ScreenGui")
+    LoadGui.Name           = "HydraLoadingScreen"
+    LoadGui.IgnoreGuiInset = true
+    LoadGui.ResetOnSpawn   = false
+    LoadGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    LoadGui.Parent         = CoreGui
+
+    local BG = Instance.new("Frame", LoadGui)
+    BG.Size             = UDim2.new(0, 280, 0, 220)
+    BG.Position         = UDim2.new(0.5, -140, 0.5, -110)
+    BG.BackgroundColor3 = bgCol
+    BG.BorderSizePixel  = 0
+    BG.ZIndex           = 1
+    Instance.new("UICorner", BG).CornerRadius = UDim.new(0, 10)
+
+    local GlowRing = Instance.new("ImageLabel", BG)
+    GlowRing.Size               = UDim2.new(0, 130, 0, 130)
+    GlowRing.Position           = UDim2.new(0.5, -65, 0, 10)
+    GlowRing.BackgroundTransparency = 1
+    GlowRing.Image              = logoId
+    GlowRing.ImageColor3        = glowCol
+    GlowRing.ImageTransparency  = 0.5
+    GlowRing.ZIndex             = 2
+
+    local Logo = Instance.new("ImageLabel", BG)
+    Logo.Size               = UDim2.new(0, 105, 0, 105)
+    Logo.Position           = UDim2.new(0.5, -52, 0, 22)
+    Logo.BackgroundTransparency = 1
+    Logo.Image              = logoId
+    Logo.ImageTransparency  = 1
+    Logo.ZIndex             = 3
+
+    local TitleLbl = Instance.new("TextLabel", BG)
+    TitleLbl.Size               = UDim2.new(1, 0, 0, 30)
+    TitleLbl.Position           = UDim2.new(0, 0, 0, 148)
+    TitleLbl.BackgroundTransparency = 1
+    TitleLbl.Text               = title
+    TitleLbl.TextColor3         = Color3.fromRGB(238, 238, 238)
+    TitleLbl.Font               = Enum.Font.GothamBold
+    TitleLbl.TextSize           = 20
+    TitleLbl.ZIndex             = 3
+    TitleLbl.TextTransparency   = 1
+
+    local BarTrack = Instance.new("Frame", BG)
+    BarTrack.Size             = UDim2.new(0, 220, 0, 2)
+    BarTrack.Position         = UDim2.new(0.5, -110, 0, 183)
+    BarTrack.BackgroundColor3 = Color3.fromRGB(40, 5, 5)
+    BarTrack.BorderSizePixel  = 0
+    BarTrack.ZIndex           = 3
+
+    local BarFill = Instance.new("Frame", BarTrack)
+    BarFill.Size             = UDim2.new(0, 0, 1, 0)
+    BarFill.BackgroundColor3 = accentCol
+    BarFill.BorderSizePixel  = 0
+    BarFill.ZIndex           = 4
+
+    local StatusLbl = Instance.new("TextLabel", BG)
+    StatusLbl.Size               = UDim2.new(1, 0, 0, 14)
+    StatusLbl.Position           = UDim2.new(0, 0, 0, 189)
+    StatusLbl.BackgroundTransparency = 1
+    StatusLbl.Text               = "INITIALIZING..."
+    StatusLbl.TextColor3         = accentCol
+    StatusLbl.Font               = Enum.Font.Gotham
+    StatusLbl.TextSize           = 9
+    StatusLbl.TextXAlignment     = Enum.TextXAlignment.Center
+    StatusLbl.ZIndex             = 4
+    StatusLbl.TextTransparency   = 1
+
+    for i, tag in ipairs(tags) do
+        local t = Instance.new("TextLabel", BG)
+        t.Size               = UDim2.new(0, 62, 0, 14)
+        t.Position           = UDim2.new(0.5, -97 + (i-1)*66, 0, 204)
+        t.BackgroundColor3   = Color3.fromRGB(15, 3, 3)
+        t.BorderSizePixel    = 0
+        t.Text               = tag
+        t.TextColor3         = accentCol
+        t.Font               = Enum.Font.Gotham
+        t.TextSize           = 7
+        t.ZIndex             = 3
+        t.BackgroundTransparency = 1
+        t.TextTransparency   = 1
+        Instance.new("UICorner", t).CornerRadius = UDim.new(0, 2)
+        task.spawn(function()
+            task.wait(1.2 + i * 0.1)
+            TS:Create(t, TweenInfo.new(0.4), {TextTransparency=0, BackgroundTransparency=0}):Play()
+        end)
+    end
+
+    -- Animasi
+    TS:Create(Logo, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {ImageTransparency=0}):Play()
+
+    task.spawn(function()
+        local angle = 0
+        while LoadGui and LoadGui.Parent do
+            angle = (angle + 1.5) % 360
+            GlowRing.Rotation = angle
+            task.wait(0.03)
+        end
+    end)
+
+    task.spawn(function()
+        while LoadGui and LoadGui.Parent do
+            TS:Create(Logo, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageColor3=Color3.fromRGB(255,60,40)}):Play()
+            task.wait(1.2)
+            TS:Create(Logo, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageColor3=Color3.fromRGB(255,255,255)}):Play()
+            task.wait(1.2)
+        end
+    end)
+
+    task.spawn(function()
+        while LoadGui and LoadGui.Parent do
+            TS:Create(GlowRing, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Size=UDim2.new(0,145,0,145), Position=UDim2.new(0.5,-72,0,3), ImageTransparency=0.2
+            }):Play()
+            task.wait(1.2)
+            TS:Create(GlowRing, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Size=UDim2.new(0,130,0,130), Position=UDim2.new(0.5,-65,0,10), ImageTransparency=0.6
+            }):Play()
+            task.wait(1.2)
+        end
+    end)
+
+    task.spawn(function()
+        task.wait(0.4)
+        TS:Create(TitleLbl, TweenInfo.new(0.5), {TextTransparency=0}):Play()
+        task.wait(0.2)
+        TS:Create(StatusLbl, TweenInfo.new(0.5), {TextTransparency=0}):Play()
+    end)
+
+    task.spawn(function()
+        task.wait(0.8)
+        for _, s in ipairs(statuses) do
+            StatusLbl.Text = s.text
+            TS:Create(BarFill, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
+                Size=UDim2.new(s.pct, 0, 1, 0)
+            }):Play()
+            task.wait(0.65)
+        end
+        task.wait(0.4)
+        TS:Create(BG, TweenInfo.new(0.6), {BackgroundTransparency=1}):Play()
+        for _, obj in ipairs(BG:GetDescendants()) do
+            if obj:IsA("TextLabel") then
+                TS:Create(obj, TweenInfo.new(0.5), {TextTransparency=1}):Play()
+            elseif obj:IsA("ImageLabel") then
+                TS:Create(obj, TweenInfo.new(0.5), {ImageTransparency=1}):Play()
+            elseif obj:IsA("Frame") then
+                TS:Create(obj, TweenInfo.new(0.5), {BackgroundTransparency=1}):Play()
+            end
+        end
+        task.wait(0.7)
+        LoadGui:Destroy()
+    end)
+end
+
 return HydraUI
