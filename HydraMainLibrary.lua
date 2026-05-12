@@ -408,4 +408,43 @@ function VoidUI:inlinePickerDropdown(rowParent, overlayParent, config)
 	}
 end
 
+
+function VoidUI:buildPetList(scrollFrame, activePets, selMap, onToggle, searchTxt, getKGFn, getInvFn, isFavFn, getAgeFn)
+	local T = self.T
+	for _, c in ipairs(scrollFrame:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
+	local search = string.lower(searchTxt or "")
+	local inv = getInvFn()
+	local list = {}
+	for uuid in pairs(inv) do table.insert(list, uuid) end
+	table.sort(list, function(a, b)
+		local aA = activePets[a] and 1 or 0
+		local bA = activePets[b] and 1 or 0
+		if aA ~= bA then return aA > bA end
+		return getKGFn(a) > getKGFn(b)
+	end)
+	for i, uuid in ipairs(list) do
+		local d = inv[uuid]; if not d then continue end
+		local petType = d.PetType or "?"
+		if search ~= "" and not petType:lower():find(search, 1, true) then continue end
+		local isActive = activePets[uuid]
+		local isSel = selMap[uuid] == true
+		local age = d.PetData and (d.PetData.Level or 0) or 0
+		local kg = getKGFn(uuid)
+		local base = d.PetData and (d.PetData.BaseWeight or 0) or 0
+		local fv = isFavFn(uuid) and " ❤" or ""
+		local activeTxt = isActive and " (active)" or ""
+		local txt = string.format("[%s%s%s]  Age %d  |  %.2f KG  |  Base %.2f", petType, activeTxt, fv, age, kg, base)
+		local row = self:button(scrollFrame, txt, UDim2.new(1, 0, 0, 26), nil,
+			isSel and T.SEL_BG or (isActive and T.ACTIVE_BG or Color3.fromRGB(13, 13, 13)),
+			isSel and T.SEL_TXT or (isActive and T.ACTIVE_TXT or T.TEXT), 9)
+		row.LayoutOrder = i
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		self:pad(row, 0, 8, 4, 0)
+		self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
+		row.MouseButton1Click:Connect(function() onToggle(uuid, petType, kg, isActive) end)
+	end
+end
+
+
+
 return VoidUI
