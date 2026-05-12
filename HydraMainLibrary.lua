@@ -142,49 +142,31 @@ function VoidUI:toggle(parent, pos, initState, onChange)
 	return { Set = function(v) state = v and true or false; apply(state) end, Get = function() return state end, Frame = box }
 end
 
--- FIXED: Simple left/right cycle picker — no floating dropdown, no scroll-overlap bug
 function VoidUI:inlinePicker(parent, options, currentVal, onSelect, size, pos)
 	local T = self.T
 	local container = self:frame(parent, size or UDim2.new(1, 0, 0, 28), pos, T.BTN)
 	self:corner(container, 5)
 	self:stroke(container, T.STROKE, 1)
-
 	local selectedIdx = 1
 	for i, v in ipairs(options) do
 		if v == currentVal then selectedIdx = i; break end
 	end
-
-	-- Left arrow button
 	local leftBtn = self:button(container, "<", UDim2.new(0, 28, 1, -2), UDim2.new(0, 1, 0, 1), T.PANEL, T.ACCENT, 13)
 	self:corner(leftBtn, 4)
 	leftBtn.Font = Enum.Font.GothamBold
-
-	-- Center display label
-	local display = self:label(
-		container,
-		options[selectedIdx] or "",
-		UDim2.new(1, -62, 1, 0),
-		UDim2.new(0, 30, 0, 0),
-		T.ACCENT, 9,
-		Enum.TextXAlignment.Center
-	)
+	local display = self:label(container, options[selectedIdx] or "", UDim2.new(1, -62, 1, 0), UDim2.new(0, 30, 0, 0), T.ACCENT, 9, Enum.TextXAlignment.Center)
 	display.Font = Enum.Font.GothamBold
 	display.TextTruncate = Enum.TextTruncate.AtEnd
-
-	-- Right arrow button
 	local rightBtn = self:button(container, ">", UDim2.new(0, 28, 1, -2), UDim2.new(1, -29, 0, 1), T.PANEL, T.ACCENT, 13)
 	self:corner(rightBtn, 4)
 	rightBtn.Font = Enum.Font.GothamBold
-
 	local function pick(idx)
 		selectedIdx = ((idx - 1) % #options) + 1
 		display.Text = options[selectedIdx]
 		if typeof(onSelect) == "function" then onSelect(options[selectedIdx]) end
 	end
-
 	leftBtn.MouseButton1Click:Connect(function() pick(selectedIdx - 1) end)
 	rightBtn.MouseButton1Click:Connect(function() pick(selectedIdx + 1) end)
-
 	return {
 		Get = function() return options[selectedIdx] end,
 		Set = function(v)
@@ -226,6 +208,100 @@ function VoidUI:accordion(parent, title, lo, startOpen)
 		arrow.Text = isOpen and "v" or ">"
 	end)
 	return { Header = header, Body = body, Inner = inner, Arrow = arrow }
+end
+
+function VoidUI.fmtTime(secs)
+	secs = math.floor(secs)
+	local h = math.floor(secs / 3600)
+	local m = math.floor((secs % 3600) / 60)
+	local s = secs % 60
+	if h > 0 then return string.format("%dh %dm %ds", h, m, s)
+	elseif m > 0 then return string.format("%dm %ds", m, s)
+	else return string.format("%ds", s) end
+end
+
+function VoidUI:buildPetList(scrollFrame, activePets, selMap, onToggle, searchTxt, getKGFn, getInvFn, isFavFn, getAgeFn)
+	local T = self.T
+	for _, c in ipairs(scrollFrame:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
+	local search = string.lower(searchTxt or "")
+	local inv = getInvFn()
+	local list = {}
+	for uuid in pairs(inv) do table.insert(list, uuid) end
+	table.sort(list, function(a, b)
+		local aA = activePets[a] and 1 or 0
+		local bA = activePets[b] and 1 or 0
+		if aA ~= bA then return aA > bA end
+		return getKGFn(a) > getKGFn(b)
+	end)
+	for i, uuid in ipairs(list) do
+		local d = inv[uuid]; if not d then continue end
+		local petType = d.PetType or "?"
+		if search ~= "" and not petType:lower():find(search, 1, true) then continue end
+		local isActive = activePets[uuid]
+		local isSel = selMap[uuid] == true
+		local age = d.PetData and (d.PetData.Level or 0) or 0
+		local kg = getKGFn(uuid)
+		local base = d.PetData and (d.PetData.BaseWeight or 0) or 0
+		local fv = isFavFn(uuid) and " ❤" or ""
+		local activeTxt = isActive and " (active)" or ""
+		local txt = string.format("[%s%s%s]  Age %d  |  %.2f KG  |  Base %.2f", petType, activeTxt, fv, age, kg, base)
+		local row = self:button(scrollFrame, txt, UDim2.new(1, 0, 0, 26), nil,
+			isSel and T.SEL_BG or (isActive and T.ACTIVE_BG or Color3.fromRGB(13, 13, 13)),
+			isSel and T.SEL_TXT or (isActive and T.ACTIVE_TXT or T.TEXT), 9)
+		row.LayoutOrder = i
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		self:pad(row, 0, 8, 4, 0)
+		self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
+		row.MouseButton1Click:Connect(function() onToggle(uuid, petType, kg, isActive) end)
+	end
+end
+
+function VoidUI:boostPicker(parent, boostOptions, selMap, onClose)
+	local T = self.T
+	local ov = self:frame(parent, UDim2.new(1, 0, 1, 0), nil, T.BG)
+	ov.ZIndex = 40
+	ov.Visible = false
+	local hdr = self:frame(ov, UDim2.new(1, 0, 0, 28), nil, T.PANEL)
+	self:stroke(hdr, T.STROKE, 1)
+	self:label(hdr, "Select Boost", UDim2.new(1, -60, 1, 0), UDim2.new(0, 8, 0, 0), T.ACCENT, 10)
+	local doneBtn = self:button(hdr, "Done", UDim2.new(0, 44, 0, 22), UDim2.new(1, -48, 0.5, -11), T.ACCENT, T.SEL_TXT, 9)
+	self:stroke(doneBtn, T.ACCENT, 1)
+	local searchBox = self:input(ov, "", "Search boost...", UDim2.new(1, -8, 0, 22), UDim2.new(0, 4, 0, 32))
+	searchBox.TextColor3 = T.TEXT
+	local sf = self:scroll(ov, UDim2.new(1, 0, 1, -58), UDim2.new(0, 0, 0, 58))
+	self:list(sf, 4)
+	self:pad(sf, 4, 6, 6, 4)
+	local function rebuild()
+		for _, c in ipairs(sf:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
+		local query = string.lower(searchBox.Text)
+		for i, b in ipairs(boostOptions) do
+			if query ~= "" and not b.name:lower():find(query, 1, true) then continue end
+			local isSel = selMap[b.name] == true
+			local row = self:button(sf, b.name, UDim2.new(1, 0, 0, 28), nil,
+				isSel and T.SEL_BG or T.BTN,
+				isSel and T.SEL_TXT or T.TEXT, 10)
+			row.LayoutOrder = i
+			row.TextXAlignment = Enum.TextXAlignment.Center
+			self:corner(row, 6)
+			self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
+			row.MouseButton1Click:Connect(function()
+				if selMap[b.name] then selMap[b.name] = nil
+				else selMap[b.name] = true end
+				rebuild()
+			end)
+		end
+	end
+	searchBox:GetPropertyChangedSignal("Text"):Connect(rebuild)
+	doneBtn.MouseButton1Click:Connect(function()
+		ov.Visible = false
+		if onClose then onClose() end
+	end)
+	rebuild()
+	return {
+		Frame = ov,
+		Open = function() ov.Visible = true; rebuild() end,
+		Close = function() ov.Visible = false end,
+	}
 end
 
 return VoidUI
