@@ -142,81 +142,59 @@ function VoidUI:toggle(parent, pos, initState, onChange)
 	return { Set = function(v) state = v and true or false; apply(state) end, Get = function() return state end, Frame = box }
 end
 
+-- FIXED: Simple left/right cycle picker — no floating dropdown, no scroll-overlap bug
 function VoidUI:inlinePicker(parent, options, currentVal, onSelect, size, pos)
 	local T = self.T
 	local container = self:frame(parent, size or UDim2.new(1, 0, 0, 28), pos, T.BTN)
 	self:corner(container, 5)
 	self:stroke(container, T.STROKE, 1)
-	local selectedVal = currentVal or options[1] or ""
-	local displayBtn = self:button(container, selectedVal .. " ▾", UDim2.new(1, 0, 1, 0), nil, T.BTN, T.ACCENT, 9)
-	displayBtn.TextXAlignment = Enum.TextXAlignment.Left
-	self:pad(displayBtn, 0, 10, 10, 0)
-	self:corner(displayBtn, 5)
-	local dropFrame = self:frame(parent, UDim2.new(1, 0, 0, 0), nil, Color3.fromRGB(10, 10, 10))
-	dropFrame.ZIndex = 50
-	dropFrame.Visible = false
-	dropFrame.ClipsDescendants = true
-	self:corner(dropFrame, 5)
-	self:stroke(dropFrame, T.ACCENT, 1)
-	local searchBox = self:input(dropFrame, "", "Search...", UDim2.new(1, -8, 0, 22), UDim2.new(0, 4, 0, 4))
-	searchBox.TextColor3 = T.TEXT
-	searchBox.Font = Enum.Font.Gotham
-	searchBox.ZIndex = 51
-	local listScroll = self:scroll(dropFrame, UDim2.new(1, 0, 1, -32), UDim2.new(0, 0, 0, 30))
-	listScroll.ZIndex = 51
-	self:list(listScroll, 2)
-	self:pad(listScroll, 2, 3, 3, 2)
-	local isOpen = false
-	local function closeDropdown()
-		isOpen = false
-		TweenSvc:Create(dropFrame, TweenInfo.new(0.12), { Size = UDim2.new(1, 0, 0, 0) }):Play()
-		task.delay(0.12, function() dropFrame.Visible = false end)
+
+	local selectedIdx = 1
+	for i, v in ipairs(options) do
+		if v == currentVal then selectedIdx = i; break end
 	end
-	local function buildList(search)
-		for _, c in ipairs(listScroll:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
-		local s = string.lower(search or "")
-		for i, opt in ipairs(options) do
-			if s ~= "" and not string.lower(opt):find(s, 1, true) then continue end
-			local isSel = opt == selectedVal
-			local row = self:button(listScroll, opt, UDim2.new(1, 0, 0, 24), nil,
-				isSel and T.SEL_BG or Color3.fromRGB(14, 14, 14),
-				isSel and T.SEL_TXT or T.TEXT, 9)
-			row.LayoutOrder = i
-			row.TextXAlignment = Enum.TextXAlignment.Left
-			self:pad(row, 0, 8, 4, 0)
-			self:stroke(row, isSel and T.ACCENT or T.STROKE, 1)
-			row.ZIndex = 52
-			row.MouseButton1Click:Connect(function()
-				selectedVal = opt
-				displayBtn.Text = opt .. " ▾"
-				if typeof(onSelect) == "function" then onSelect(opt) end
-				closeDropdown()
-			end)
-		end
+
+	-- Left arrow button
+	local leftBtn = self:button(container, "<", UDim2.new(0, 28, 1, -2), UDim2.new(0, 1, 0, 1), T.PANEL, T.ACCENT, 13)
+	self:corner(leftBtn, 4)
+	leftBtn.Font = Enum.Font.GothamBold
+
+	-- Center display label
+	local display = self:label(
+		container,
+		options[selectedIdx] or "",
+		UDim2.new(1, -62, 1, 0),
+		UDim2.new(0, 30, 0, 0),
+		T.ACCENT, 9,
+		Enum.TextXAlignment.Center
+	)
+	display.Font = Enum.Font.GothamBold
+	display.TextTruncate = Enum.TextTruncate.AtEnd
+
+	-- Right arrow button
+	local rightBtn = self:button(container, ">", UDim2.new(0, 28, 1, -2), UDim2.new(1, -29, 0, 1), T.PANEL, T.ACCENT, 13)
+	self:corner(rightBtn, 4)
+	rightBtn.Font = Enum.Font.GothamBold
+
+	local function pick(idx)
+		selectedIdx = ((idx - 1) % #options) + 1
+		display.Text = options[selectedIdx]
+		if typeof(onSelect) == "function" then onSelect(options[selectedIdx]) end
 	end
-	searchBox:GetPropertyChangedSignal("Text"):Connect(function() buildList(searchBox.Text) end)
-	local function openDropdown()
-		isOpen = true
-		buildList("")
-		searchBox.Text = ""
-		local rowCount = #options
-		local dropH = math.min(rowCount * 26 + 36, 160)
-		dropFrame.Size = UDim2.new(1, 0, 0, 0)
-		dropFrame.Visible = true
-		TweenSvc:Create(dropFrame, TweenInfo.new(0.12), { Size = UDim2.new(1, 0, 0, dropH) }):Play()
-	end
-	displayBtn.MouseButton1Click:Connect(function()
-		if isOpen then closeDropdown() else openDropdown() end
-	end)
+
+	leftBtn.MouseButton1Click:Connect(function() pick(selectedIdx - 1) end)
+	rightBtn.MouseButton1Click:Connect(function() pick(selectedIdx + 1) end)
+
 	return {
-		Get = function() return selectedVal end,
+		Get = function() return options[selectedIdx] end,
 		Set = function(v)
-			selectedVal = v
-			displayBtn.Text = v .. " ▾"
+			for i, opt in ipairs(options) do
+				if opt == v then selectedIdx = i; display.Text = v; break end
+			end
 		end,
 		Frame = container,
-		DropFrame = dropFrame,
-		Close = closeDropdown,
+		Close = function() end,
+		DropFrame = nil,
 	}
 end
 
@@ -227,7 +205,7 @@ function VoidUI:accordion(parent, title, lo, startOpen)
 	self:corner(header, 6)
 	self:stroke(header, T.ACCENT, 1)
 	self:label(header, title, UDim2.new(1, -40, 1, 0), UDim2.new(0, 12, 0, 0), T.ACCENT, 10)
-	local arrow = self:label(header, startOpen and "▼" or "▶", UDim2.new(0, 20, 1, 0), UDim2.new(1, -26, 0, 0), T.DIM, 11, Enum.TextXAlignment.Center)
+	local arrow = self:label(header, startOpen and "v" or ">", UDim2.new(0, 20, 1, 0), UDim2.new(1, -26, 0, 0), T.DIM, 11, Enum.TextXAlignment.Center)
 	local hitBtn = self:button(header, "", UDim2.new(1, 0, 1, 0), nil, T.BTN, T.TEXT)
 	hitBtn.BackgroundTransparency = 1
 	hitBtn.ZIndex = 5
@@ -245,7 +223,7 @@ function VoidUI:accordion(parent, title, lo, startOpen)
 	hitBtn.MouseButton1Click:Connect(function()
 		isOpen = not isOpen
 		body.Visible = isOpen
-		arrow.Text = isOpen and "▼" or "▶"
+		arrow.Text = isOpen and "v" or ">"
 	end)
 	return { Header = header, Body = body, Inner = inner, Arrow = arrow }
 end
