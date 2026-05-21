@@ -466,4 +466,14 @@ end
 
 
 
+function VoidUI.fmtTime(secs)
+    secs = math.floor(secs)
+    local h = math.floor(secs/3600)
+    local m = math.floor((secs%3600)/60)
+    local s = secs % 60
+    if h > 0 then return string.format("%dh %dm %ds", h, m, s)
+    elseif m > 0 then return string.format("%dm %ds", m, s)
+    else return string.format("%ds", s) end
+end
+
 return VoidUI
