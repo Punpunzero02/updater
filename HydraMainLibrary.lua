@@ -476,4 +476,115 @@ function VoidUI.fmtTime(secs)
     else return string.format("%ds", s) end
 end
 
+
+
+function VoidUI:sidebar(parent)
+	local scroll = Instance.new("ScrollingFrame", parent)
+	scroll.Size = UDim2.new(1,0,1,0)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 0
+	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0,0,0,0)
+
+	local list = Instance.new("Frame", scroll)
+	list.Size = UDim2.new(1,0,0,0)
+	list.BackgroundTransparency = 1
+	list.AutomaticSize = Enum.AutomaticSize.Y
+
+	local layout = Instance.new("UIListLayout", list)
+	layout.Padding = UDim.new(0,2)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+	local pad = Instance.new("UIPadding", list)
+	pad.PaddingTop = UDim.new(0,6)
+	pad.PaddingBottom = UDim.new(0,6)
+
+	return list
+end
+
+function VoidUI:iconBtn(parent, icon, label)
+	local T = self.T
+	local b = Instance.new("TextButton", parent)
+	b.Size = UDim2.new(1,-8,0,38)
+	b.BackgroundColor3 = T.BTN
+	b.BackgroundTransparency = 1
+	b.BorderSizePixel = 0
+	b.Text = ""
+	b.AutoButtonColor = false
+	self:corner(b,7)
+
+	local accentBar = Instance.new("Frame",b)
+	accentBar.Size = UDim2.new(0,2,0,20)
+	accentBar.Position = UDim2.new(0,0,0.5,-10)
+	accentBar.BackgroundColor3 = T.ACCENT
+	accentBar.BorderSizePixel = 0
+	accentBar.Visible = false
+	self:corner(accentBar,2)
+
+	local iconLbl = Instance.new("TextLabel",b)
+	iconLbl.Size = UDim2.new(1,0,0,20)
+	iconLbl.Position = UDim2.new(0,0,0,5)
+	iconLbl.BackgroundTransparency = 1
+	iconLbl.Text = icon
+	iconLbl.TextColor3 = T.DIM
+	iconLbl.Font = Enum.Font.GothamBold
+	iconLbl.TextSize = 14
+	iconLbl.TextXAlignment = Enum.TextXAlignment.Center
+
+	local textLbl = Instance.new("TextLabel",b)
+	textLbl.Size = UDim2.new(1,0,0,10)
+	textLbl.Position = UDim2.new(0,0,0,25)
+	textLbl.BackgroundTransparency = 1
+	textLbl.Text = label
+	textLbl.TextColor3 = T.DIM
+	textLbl.Font = Enum.Font.Gotham
+	textLbl.TextSize = 7
+	textLbl.TextXAlignment = Enum.TextXAlignment.Center
+
+	b.MouseEnter:Connect(function()
+		if not accentBar.Visible then
+			b.BackgroundTransparency = 0.85
+			b.BackgroundColor3 = T.ACCENT
+			iconLbl.TextColor3 = Color3.fromRGB(160,150,220)
+			textLbl.TextColor3 = Color3.fromRGB(160,150,220)
+		end
+	end)
+	b.MouseLeave:Connect(function()
+		if not accentBar.Visible then
+			b.BackgroundTransparency = 1
+			b.BackgroundColor3 = T.BTN
+			iconLbl.TextColor3 = T.DIM
+			textLbl.TextColor3 = T.DIM
+		end
+	end)
+
+	local function setActive(s)
+		accentBar.Visible = s
+		if s then
+			b.BackgroundColor3 = Color3.fromRGB(20,20,50)
+			b.BackgroundTransparency = 0
+			iconLbl.TextColor3 = T.ACCENT
+			textLbl.TextColor3 = T.ACCENT
+		else
+			b.BackgroundColor3 = T.BTN
+			b.BackgroundTransparency = 1
+			iconLbl.TextColor3 = T.DIM
+			textLbl.TextColor3 = T.DIM
+		end
+	end
+
+	return { Button=b, SetActive=setActive }
+end
+
+function VoidUI:sidebarDivider(parent)
+	local d = Instance.new("Frame", parent)
+	d.Size = UDim2.new(0,30,0,1)
+	d.BackgroundColor3 = Color3.fromRGB(28,28,40)
+	d.BorderSizePixel = 0
+	return d
+end
+
 return VoidUI
