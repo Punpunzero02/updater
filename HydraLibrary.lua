@@ -11,6 +11,8 @@ function HydraUI.new(theme)
     self.T = theme
     self._trackedElements = {}
     self._trackedStrokes  = {}
+    self._scaledElements  = {}
+    self.scale = 1.0
     return self
 end
 
@@ -19,6 +21,27 @@ end
 function HydraUI:trackElement(elem, colorKey, prop)
     table.insert(self._trackedElements, { elem = elem, colorKey = colorKey, prop = prop })
 end
+
+function HydraUI:s(n)
+    return math.floor(n * self.scale + 0.5)
+end
+
+function HydraUI:trackScaled(elem, prop, baseVal)
+    table.insert(self._scaledElements, { elem = elem, prop = prop, base = baseVal })
+end
+
+function HydraUI:setScale(newScale)
+    self.scale = math.clamp(newScale, 0.6, 2.0)
+    for _, t in ipairs(self._scaledElements) do
+        if t.elem and t.elem.Parent then
+            pcall(function()
+                t.elem[t.prop] = math.floor(t.base * self.scale + 0.5)
+            end)
+        end
+    end
+end
+
+function HydraUI:trackElement(elem, colorKey, prop)
 
 function HydraUI:trackStroke(stroke, colorKey)
     table.insert(self._trackedStrokes, { stroke = stroke, colorKey = colorKey })
@@ -93,7 +116,8 @@ function HydraUI:label(parent, text, sz, pos, colorKey, fontSize, xAlign)
     l.Text               = text or ""
     l.TextColor3         = (type(colorKey) == "string") and (self.T[colorKey] or self.T.TEXT) or (colorKey or self.T.TEXT)
     l.Font               = Enum.Font.GothamBold
-    l.TextSize           = fontSize or 10
+    l.TextSize           = self:s(fontSize or 10)
+    self:trackScaled(l, "TextSize", fontSize or 10)
     l.TextXAlignment     = xAlign or Enum.TextXAlignment.Left
     l.TextTruncate       = Enum.TextTruncate.AtEnd
     l.Parent             = parent
@@ -113,7 +137,8 @@ function HydraUI:button(parent, text, sz, pos, bgKey, textColorKey, fontSize)
     b.Text             = text or ""
     b.TextColor3       = (type(textColorKey) == "string") and (self.T[textColorKey] or self.T.TEXT) or (textColorKey or self.T.TEXT)
     b.Font             = Enum.Font.GothamBold
-    b.TextSize         = fontSize or 9
+    b.TextSize         = self:s(fontSize or 9)
+    self:trackScaled(b, "TextSize", fontSize or 9)
     b.AutoButtonColor  = false
     b.Parent           = parent
     self:corner(b, 3)
@@ -184,10 +209,10 @@ end
 -- Toggle Switch
 -- returns { Set(bool), Get(), Frame }
 function HydraUI:toggle(parent, pos, init, onChange, big)
-    local W  = big and 34 or 26
-    local H  = big and 16 or 12
-    local KS = big and 12 or 9
-    local R  = big and 8  or 6
+    local W  = self:s(big and 34 or 26)
+    local H  = self:s(big and 16 or 12)
+    local KS = self:s(big and 12 or 9)
+    local R  = self:s(big and 8  or 6)
 
     local box = self:frame(parent, UDim2.new(0, W, 0, H), pos, "TOGGLE_OFF")
     self:corner(box, R)
@@ -1086,8 +1111,8 @@ end
 -- Draggable Window
 -- returns { main, titleBar, closeBtn, minBtn, floatBtn, titleLbl }
 function HydraUI:window(guiParent, w, h, title)
-    local W = w or 420
-    local H = h or 290
+    local W = w or self:s(420)
+    local H = h or self:s(290)
 
     local main = self:frame(guiParent,
         UDim2.new(0, W, 0, H),
