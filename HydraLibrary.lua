@@ -31,7 +31,7 @@ function HydraUI:trackScaled(elem, prop, baseVal)
 end
 
 function HydraUI:setScale(newScale)
-    self.scale = math.clamp(newScale, 0.6, 2.0)
+    self.scale = math.clamp(newScale, 0.6, 3.0)
     for _, t in ipairs(self._scaledElements) do
         if t.elem and t.elem.Parent then
             pcall(function()
