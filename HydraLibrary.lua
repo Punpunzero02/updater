@@ -42,6 +42,8 @@ function HydraUI:setScale(newScale)
 end
 
 function HydraUI:trackElement(elem, colorKey, prop)
+    table.insert(self._trackedElements, { elem = elem, colorKey = colorKey, prop = prop })
+end
 
 function HydraUI:trackStroke(stroke, colorKey)
     table.insert(self._trackedStrokes, { stroke = stroke, colorKey = colorKey })
