@@ -587,4 +587,24 @@ function VoidUI:sidebarDivider(parent)
 	return d
 end
 
+function VoidUI:labelWrap(parent, text, size, pos, col, fs, xa)
+	local l = Instance.new("TextLabel")
+	l.Size = size or UDim2.new(1, 0, 0, 0)
+	l.Position = pos or UDim2.new(0, 0, 0, 0)
+	l.BackgroundTransparency = 1
+	l.Text = text or ""
+	l.TextColor3 = col or self.T.TEXT
+	l.Font = Enum.Font.GothamBold
+	l.TextSize = fs or 11
+	l.TextXAlignment = xa or Enum.TextXAlignment.Left
+	l.TextTruncate = Enum.TextTruncate.None
+	l.TextWrapped = true
+	l.AutomaticSize = Enum.AutomaticSize.Y
+	l.Parent = parent
+	return l
+end
+
+return VoidUI
+
+
 return VoidUI
