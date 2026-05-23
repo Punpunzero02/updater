@@ -615,15 +615,14 @@ function VoidUI:teamCard(parent, teamName, petNames, count, lo, onSwap, onDelete
 	self:corner(card, 6)
 	self:stroke(card, T.STROKE, 1)
 
-	-- Team name header
 	local nameH = 20
 	self:label(card, teamName, UDim2.new(1,-60,0,nameH), UDim2.new(0,8,0,4), T.TEXT, 10)
 
-	-- Pet count badge
+	
 	local badgeLbl = self:label(card, count.." pet(s)", UDim2.new(0,50,0,14), UDim2.new(0,8,0,nameH+4), T.ACCENT, 8)
 	badgeLbl.Font = Enum.Font.GothamBold
 
-	-- Pet names: group per row, PETS_PER_ROW per line
+	
 	local yOff = nameH + 4
 	for rowIdx = 1, rows do
 		local startI = (rowIdx-1)*PETS_PER_ROW + 1
@@ -637,12 +636,11 @@ function VoidUI:teamCard(parent, teamName, petNames, count, lo, onSwap, onDelete
 		yOff = yOff + 14
 	end
 
-	-- Swap button
 	local swapBtn = self:button(card, "⇄", UDim2.new(0,26,0,22), UDim2.new(1,-58,0.5,-11), T.ACCENT, T.SEL_TXT, 12)
 	self:stroke(swapBtn, T.ACCENT, 1)
 	swapBtn.MouseButton1Click:Connect(onSwap)
 
-	-- Delete button
+	
 	local delBtn = self:button(card, "-", UDim2.new(0,26,0,22), UDim2.new(1,-28,0.5,-11), T.ERROR, T.TEXT, 14)
 	self:stroke(delBtn, T.ERROR, 1)
 	delBtn.MouseButton1Click:Connect(onDelete)
@@ -658,6 +656,7 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	end
 	local summaryParts = {}
 	for ptype, cnt in pairs(mutCount) do
+	
 		local baseName, mutName = ptype:match("^(.-)%s*%[(.+)%]%s*$")
 		if baseName and mutName then
 			table.insert(summaryParts, { key = baseName .. mutName, text = cnt .. " [" .. mutName .. "] " .. baseName })
@@ -666,42 +665,47 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 		end
 	end
 	table.sort(summaryParts, function(a, b) return a.key < b.key end)
-
-	-- split tiap 3 item jadi baris baru
-	local lines = {}
-	local rowBuf = {}
-	for idx, entry in ipairs(summaryParts) do
-		table.insert(rowBuf, entry.text)
-		if #rowBuf == 3 or idx == #summaryParts then
-			table.insert(lines, table.concat(rowBuf, "  ·  "))
-			rowBuf = {}
-		end
-	end
-	local summaryTxt = #lines > 0 and table.concat(lines, "\n") or "(empty)"
-
-	local lineCount = math.max(1, #lines)
-	local cardH = 10 + 18 + (lineCount * 12) + 8  -- top pad + name + lines + bot pad
-	cardH = math.max(cardH, 48)
-
-	local card = self:frame(parent, UDim2.new(1, 0, 0, cardH), nil, T.BTN)
+	local card = self:frame(parent, UDim2.new(1, 0, 0, 52), nil, T.BTN)
 	card.LayoutOrder = lo
 	self:corner(card, 6)
 	self:stroke(card, T.STROKE, 1)
-
 	local nameLbl = self:label(card, name, UDim2.new(1, -72, 0, 18), UDim2.new(0, 10, 0, 4), T.ACCENT, 10)
 	nameLbl.Font = Enum.Font.GothamBold
-
-	local subLbl = self:label(card, summaryTxt, UDim2.new(1, -72, 0, lineCount * 12), UDim2.new(0, 10, 0, 24), T.DIM, 8)
-	subLbl.Font = Enum.Font.Gotham
-	subLbl.TextWrapped = true
-	subLbl.TextTruncate = Enum.TextTruncate.None
-
-	local midY = math.floor(cardH / 2)
-	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0, midY - 14), T.PANEL, T.ACCENT, 14)
+	local subContainer = Instance.new("Frame", card)
+	subContainer.Size = UDim2.new(1, -72, 0, 14)
+	subContainer.Position = UDim2.new(0, 10, 0, 24)
+	subContainer.BackgroundTransparency = 1
+	local subLayout = Instance.new("UIListLayout", subContainer)
+	subLayout.FillDirection = Enum.FillDirection.Horizontal
+	subLayout.Padding = UDim.new(0, 4)
+	subLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	subLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	for i, entry in ipairs(summaryParts) do
+		local hasMut = entry.text:find("%[") ~= nil
+		local lbl = Instance.new("TextLabel", subContainer)
+		lbl.Size = UDim2.new(0, 0, 1, 0)
+		lbl.AutomaticSize = Enum.AutomaticSize.X
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 8
+		lbl.Text = entry.text
+		lbl.TextColor3 = hasMut and Color3.fromRGB(255, 200, 80) or T.DIM
+		lbl.LayoutOrder = i * 2 - 1
+		if i < #summaryParts then
+			local sep = Instance.new("TextLabel", subContainer)
+			sep.Size = UDim2.new(0, 6, 1, 0)
+			sep.BackgroundTransparency = 1
+			sep.Font = Enum.Font.Gotham
+			sep.TextSize = 8
+			sep.Text = "·"
+			sep.TextColor3 = T.DIM
+			sep.LayoutOrder = i * 2
+		end
+	end
+	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0.5, -14), T.PANEL, T.ACCENT, 14)
 	self:stroke(equipBtn, T.ACCENT, 1)
-	local delBtn = self:button(card, "-", UDim2.new(0, 28, 0, 28), UDim2.new(1, -30, 0, midY - 14), T.ERROR, T.TEXT, 16)
+	local delBtn = self:button(card, "-", UDim2.new(0, 28, 0, 28), UDim2.new(1, -30, 0.5, -14), T.ERROR, T.TEXT, 16)
 	self:stroke(delBtn, T.ERROR, 1)
-
 	equipBtn.MouseButton1Click:Connect(function() if onEquip then onEquip() end end)
 	delBtn.MouseButton1Click:Connect(function() if onDelete then onDelete() end end)
 	return card
