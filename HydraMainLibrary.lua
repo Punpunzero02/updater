@@ -61,6 +61,7 @@ function VoidUI:button(parent, text, size, pos, bg, tc, fs)
 	b.Font = Enum.Font.GothamBold
 	b.TextSize = fs or 11
 	b.AutoButtonColor = false
+	b.RichText = true
 	b.Parent = parent
 	self:corner(b, 5)
 	return b
