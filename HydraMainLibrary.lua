@@ -659,7 +659,7 @@ function VoidUI:builtinTeamCard(parent, name, desc, lo, onEquip)
 	stroke.Thickness = 1
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-	-- Badge BUILT-IN dengan logo Hydra kecil di kiri badge
+	
 	local badge = self:frame(card, UDim2.new(0, 74, 0, 14), UDim2.new(0, 8, 0, 4), Color3.fromRGB(60, 40, 120))
 	self:corner(badge, 4)
 	local badgeIcon = Instance.new("ImageLabel", badge)
@@ -671,13 +671,13 @@ function VoidUI:builtinTeamCard(parent, name, desc, lo, onEquip)
 	local badgeLbl = self:label(badge, "BUILT-IN", UDim2.new(1, -14, 1, 0), UDim2.new(0, 13, 0, 0), Color3.fromRGB(160, 130, 255), 7, Enum.TextXAlignment.Center)
 	badgeLbl.Font = Enum.Font.GothamBold
 
-	-- Name & desc
+	
 	local nameLbl = self:label(card, name, UDim2.new(1, -100, 0, 16), UDim2.new(0, 8, 0, 18), Color3.fromRGB(180, 160, 255), 10)
 	nameLbl.Font = Enum.Font.GothamBold
 	local descLbl = self:label(card, desc, UDim2.new(1, -100, 0, 13), UDim2.new(0, 8, 0, 35), T.DIM, 8)
 	descLbl.Font = Enum.Font.Gotham
 
-	-- Logo Hydra besar di kanan (dekorasi)
+	
 	local hydraLogo = Instance.new("ImageLabel", card)
 	hydraLogo.Size = UDim2.new(0, 32, 0, 32)
 	hydraLogo.Position = UDim2.new(1, -68, 0.5, -16)
@@ -686,13 +686,12 @@ function VoidUI:builtinTeamCard(parent, name, desc, lo, onEquip)
 	hydraLogo.ScaleType = Enum.ScaleType.Fit
 	hydraLogo.ImageTransparency = 0.2
 
-	-- Equip button
-	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -36, 0.5, -14), Color3.fromRGB(60, 40, 120), Color3.fromRGB(180, 160, 255), 14)
+	
+	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -36, 0.5, -14), Color3.fromRGB(60, 40, 120), Color3.fromRGB(180, 160, 255), 12)
 	self:stroke(equipBtn, Color3.fromRGB(80, 60, 160), 1)
 	equipBtn.MouseButton1Click:Connect(function() if onEquip then onEquip() end end)
 	return card
 end
-
 function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	local T = self.T
 	local mutCount = {}
