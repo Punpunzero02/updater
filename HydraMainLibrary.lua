@@ -652,16 +652,26 @@ end
 
 function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	local T = self.T
-	local petCount = {}
+	local mutCount = {}
 	for _, pt in ipairs(petNames) do
-		petCount[pt] = (petCount[pt] or 0) + 1
+		mutCount[pt] = (mutCount[pt] or 0) + 1
 	end
 	local summaryParts = {}
-	for ptype, cnt in pairs(petCount) do
-		table.insert(summaryParts, cnt .. " " .. ptype)
+	for ptype, cnt in pairs(mutCount) do
+		-- parse mutation: format "PetName [MutName]" atau "PetName"
+		local baseName, mutName = ptype:match("^(.-)%s*%[(.+)%]%s*$")
+		if baseName and mutName then
+			table.insert(summaryParts, { key = baseName .. mutName, text = cnt .. " [" .. mutName .. "] " .. baseName })
+		else
+			table.insert(summaryParts, { key = ptype, text = cnt .. " " .. ptype })
+		end
 	end
-	table.sort(summaryParts)
-	local summaryTxt = #summaryParts > 0 and table.concat(summaryParts, ", ") or "(empty)"
+	table.sort(summaryParts, function(a, b) return a.key < b.key end)
+	local lines = {}
+	for _, entry in ipairs(summaryParts) do
+		table.insert(lines, entry.text)
+	end
+	local summaryTxt = #lines > 0 and table.concat(lines, "\n") or "(empty)"
 	local card = self:frame(parent, UDim2.new(1, 0, 0, 52), nil, T.BTN)
 	card.LayoutOrder = lo
 	self:corner(card, 6)
