@@ -604,7 +604,53 @@ function VoidUI:labelWrap(parent, text, size, pos, col, fs, xa)
 	return l
 end
 
+function VoidUI:teamCard(parent, teamName, petNames, count, lo, onSwap, onDelete)
+	local T = self.T
+	local PETS_PER_ROW = 3
+	local rows = math.ceil(#petNames / PETS_PER_ROW)
+	local cardH = 26 + math.max(1, rows) * 14 + 8
 
+	local card = self:frame(parent, UDim2.new(1,0,0,cardH), nil, T.BTN)
+	card.LayoutOrder = lo
+	self:corner(card, 6)
+	self:stroke(card, T.STROKE, 1)
 
+	-- Team name header
+	local nameH = 20
+	self:label(card, teamName, UDim2.new(1,-60,0,nameH), UDim2.new(0,8,0,4), T.TEXT, 10)
+
+	-- Pet count badge
+	local badgeLbl = self:label(card, count.." pet(s)", UDim2.new(0,50,0,14), UDim2.new(0,8,0,nameH+4), T.ACCENT, 8)
+	badgeLbl.Font = Enum.Font.GothamBold
+
+	-- Pet names: group per row, PETS_PER_ROW per line
+	local yOff = nameH + 4
+	for rowIdx = 1, rows do
+		local startI = (rowIdx-1)*PETS_PER_ROW + 1
+		local endI   = math.min(rowIdx*PETS_PER_ROW, #petNames)
+		local chunk  = {}
+		for k = startI, endI do table.insert(chunk, petNames[k]) end
+		local line = table.concat(chunk, "  ·  ")
+		local lbl = self:label(card, line, UDim2.new(1,-68,0,14), UDim2.new(0,8,0,yOff), T.TEXT, 8)
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextTruncate = Enum.TextTruncate.AtEnd
+		yOff = yOff + 14
+	end
+
+	-- Swap button
+	local swapBtn = self:button(card, "⇄", UDim2.new(0,26,0,22), UDim2.new(1,-58,0.5,-11), T.ACCENT, T.SEL_TXT, 12)
+	self:stroke(swapBtn, T.ACCENT, 1)
+	swapBtn.MouseButton1Click:Connect(onSwap)
+
+	-- Delete button
+	local delBtn = self:button(card, "-", UDim2.new(0,26,0,22), UDim2.new(1,-28,0.5,-11), T.ERROR, T.TEXT, 14)
+	self:stroke(delBtn, T.ERROR, 1)
+	delBtn.MouseButton1Click:Connect(onDelete)
+
+	return card
+end
 
 return VoidUI
+
+
+
