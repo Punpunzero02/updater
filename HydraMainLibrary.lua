@@ -604,7 +604,7 @@ function VoidUI:labelWrap(parent, text, size, pos, col, fs, xa)
 	return l
 end
 
-return VoidUI
+
 
 
 return VoidUI
