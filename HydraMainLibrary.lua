@@ -650,7 +650,38 @@ function VoidUI:teamCard(parent, teamName, petNames, count, lo, onSwap, onDelete
 	return card
 end
 
+function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
+	local T = self.T
+	local petCount = {}
+	for _, pt in ipairs(petNames) do
+		petCount[pt] = (petCount[pt] or 0) + 1
+	end
+	local summaryParts = {}
+	for ptype, cnt in pairs(petCount) do
+		table.insert(summaryParts, cnt .. " " .. ptype)
+	end
+	table.sort(summaryParts)
+	local summaryTxt = #summaryParts > 0 and table.concat(summaryParts, ", ") or "(empty)"
+	local card = self:frame(parent, UDim2.new(1, 0, 0, 52), nil, T.BTN)
+	card.LayoutOrder = lo
+	self:corner(card, 6)
+	self:stroke(card, T.STROKE, 1)
+	local nameLbl = self:label(card, name, UDim2.new(1, -72, 0, 18), UDim2.new(0, 10, 0, 4), T.ACCENT, 10)
+	nameLbl.Font = Enum.Font.GothamBold
+	local subLbl = self:label(card, summaryTxt, UDim2.new(1, -72, 0, 14), UDim2.new(0, 10, 0, 24), T.DIM, 8)
+	subLbl.Font = Enum.Font.Gotham
+	subLbl.TextTruncate = Enum.TextTruncate.AtEnd
+	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0.5, -14), T.PANEL, T.ACCENT, 14)
+	self:stroke(equipBtn, T.ACCENT, 1)
+	local delBtn = self:button(card, "-", UDim2.new(0, 28, 0, 28), UDim2.new(1, -30, 0.5, -14), T.ERROR, T.TEXT, 16)
+	self:stroke(delBtn, T.ERROR, 1)
+	equipBtn.MouseButton1Click:Connect(function() if onEquip then onEquip() end end)
+	delBtn.MouseButton1Click:Connect(function() if onDelete then onDelete() end end)
+	return card
+end
+
 return VoidUI
+
 
 
 
