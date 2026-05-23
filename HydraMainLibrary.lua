@@ -658,7 +658,6 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	end
 	local summaryParts = {}
 	for ptype, cnt in pairs(mutCount) do
-		-- parse mutation: format "PetName [MutName]" atau "PetName"
 		local baseName, mutName = ptype:match("^(.-)%s*%[(.+)%]%s*$")
 		if baseName and mutName then
 			table.insert(summaryParts, { key = baseName .. mutName, text = cnt .. " [" .. mutName .. "] " .. baseName })
@@ -667,24 +666,42 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 		end
 	end
 	table.sort(summaryParts, function(a, b) return a.key < b.key end)
+
+	-- split tiap 3 item jadi baris baru
 	local lines = {}
-	for _, entry in ipairs(summaryParts) do
-		table.insert(lines, entry.text)
+	local rowBuf = {}
+	for idx, entry in ipairs(summaryParts) do
+		table.insert(rowBuf, entry.text)
+		if #rowBuf == 3 or idx == #summaryParts then
+			table.insert(lines, table.concat(rowBuf, "  ·  "))
+			rowBuf = {}
+		end
 	end
 	local summaryTxt = #lines > 0 and table.concat(lines, "\n") or "(empty)"
-	local card = self:frame(parent, UDim2.new(1, 0, 0, 52), nil, T.BTN)
+
+	local lineCount = math.max(1, #lines)
+	local cardH = 10 + 18 + (lineCount * 12) + 8  -- top pad + name + lines + bot pad
+	cardH = math.max(cardH, 48)
+
+	local card = self:frame(parent, UDim2.new(1, 0, 0, cardH), nil, T.BTN)
 	card.LayoutOrder = lo
 	self:corner(card, 6)
 	self:stroke(card, T.STROKE, 1)
+
 	local nameLbl = self:label(card, name, UDim2.new(1, -72, 0, 18), UDim2.new(0, 10, 0, 4), T.ACCENT, 10)
 	nameLbl.Font = Enum.Font.GothamBold
-	local subLbl = self:label(card, summaryTxt, UDim2.new(1, -72, 0, 14), UDim2.new(0, 10, 0, 24), T.DIM, 8)
+
+	local subLbl = self:label(card, summaryTxt, UDim2.new(1, -72, 0, lineCount * 12), UDim2.new(0, 10, 0, 24), T.DIM, 8)
 	subLbl.Font = Enum.Font.Gotham
-	subLbl.TextTruncate = Enum.TextTruncate.AtEnd
-	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0.5, -14), T.PANEL, T.ACCENT, 14)
+	subLbl.TextWrapped = true
+	subLbl.TextTruncate = Enum.TextTruncate.None
+
+	local midY = math.floor(cardH / 2)
+	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0, midY - 14), T.PANEL, T.ACCENT, 14)
 	self:stroke(equipBtn, T.ACCENT, 1)
-	local delBtn = self:button(card, "-", UDim2.new(0, 28, 0, 28), UDim2.new(1, -30, 0.5, -14), T.ERROR, T.TEXT, 16)
+	local delBtn = self:button(card, "-", UDim2.new(0, 28, 0, 28), UDim2.new(1, -30, 0, midY - 14), T.ERROR, T.TEXT, 16)
 	self:stroke(delBtn, T.ERROR, 1)
+
 	equipBtn.MouseButton1Click:Connect(function() if onEquip then onEquip() end end)
 	delBtn.MouseButton1Click:Connect(function() if onDelete then onDelete() end end)
 	return card
