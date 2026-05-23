@@ -656,7 +656,6 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	end
 	local summaryParts = {}
 	for ptype, cnt in pairs(mutCount) do
-	
 		local baseName, mutName = ptype:match("^(.-)%s*%[(.+)%]%s*$")
 		if baseName and mutName then
 			table.insert(summaryParts, { key = baseName .. mutName, text = cnt .. " [" .. mutName .. "] " .. baseName })
@@ -671,26 +670,53 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	self:stroke(card, T.STROKE, 1)
 	local nameLbl = self:label(card, name, UDim2.new(1, -72, 0, 18), UDim2.new(0, 10, 0, 4), T.ACCENT, 10)
 	nameLbl.Font = Enum.Font.GothamBold
-	local subContainer = Instance.new("Frame", card)
+	local subContainer = Instance.new("ScrollingFrame", card)
 	subContainer.Size = UDim2.new(1, -72, 0, 14)
 	subContainer.Position = UDim2.new(0, 10, 0, 24)
 	subContainer.BackgroundTransparency = 1
+	subContainer.BorderSizePixel = 0
+	subContainer.ScrollBarThickness = 2
+	subContainer.ScrollBarImageColor3 = Color3.fromRGB(127, 119, 221)
+	subContainer.ScrollingDirection = Enum.ScrollingDirection.X
+	subContainer.AutomaticCanvasSize = Enum.AutomaticSize.X
+	subContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 	local subLayout = Instance.new("UIListLayout", subContainer)
 	subLayout.FillDirection = Enum.FillDirection.Horizontal
 	subLayout.Padding = UDim.new(0, 4)
 	subLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	subLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	for i, entry in ipairs(summaryParts) do
-		local hasMut = entry.text:find("%[") ~= nil
-		local lbl = Instance.new("TextLabel", subContainer)
-		lbl.Size = UDim2.new(0, 0, 1, 0)
-		lbl.AutomaticSize = Enum.AutomaticSize.X
-		lbl.BackgroundTransparency = 1
-		lbl.Font = Enum.Font.Gotham
-		lbl.TextSize = 8
-		lbl.Text = entry.text
-		lbl.TextColor3 = hasMut and Color3.fromRGB(255, 200, 80) or T.DIM
-		lbl.LayoutOrder = i * 2 - 1
+		local countStr, mutStr, petStr = entry.text:match("^(%d+ )%[(.-)%] (.+)$")
+		if mutStr then
+			local lblPet = Instance.new("TextLabel", subContainer)
+			lblPet.Size = UDim2.new(0, 0, 1, 0)
+			lblPet.AutomaticSize = Enum.AutomaticSize.X
+			lblPet.BackgroundTransparency = 1
+			lblPet.Font = Enum.Font.Gotham
+			lblPet.TextSize = 8
+			lblPet.Text = countStr .. petStr
+			lblPet.TextColor3 = Color3.fromRGB(255, 200, 80)
+			lblPet.LayoutOrder = i * 3 - 2
+			local lblMut = Instance.new("TextLabel", subContainer)
+			lblMut.Size = UDim2.new(0, 0, 1, 0)
+			lblMut.AutomaticSize = Enum.AutomaticSize.X
+			lblMut.BackgroundTransparency = 1
+			lblMut.Font = Enum.Font.GothamBold
+			lblMut.TextSize = 8
+			lblMut.Text = "[" .. mutStr .. "]"
+			lblMut.TextColor3 = Color3.fromRGB(180, 120, 255)
+			lblMut.LayoutOrder = i * 3 - 1
+		else
+			local lbl = Instance.new("TextLabel", subContainer)
+			lbl.Size = UDim2.new(0, 0, 1, 0)
+			lbl.AutomaticSize = Enum.AutomaticSize.X
+			lbl.BackgroundTransparency = 1
+			lbl.Font = Enum.Font.Gotham
+			lbl.TextSize = 8
+			lbl.Text = entry.text
+			lbl.TextColor3 = T.DIM
+			lbl.LayoutOrder = i * 3 - 2
+		end
 		if i < #summaryParts then
 			local sep = Instance.new("TextLabel", subContainer)
 			sep.Size = UDim2.new(0, 6, 1, 0)
@@ -699,7 +725,7 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 			sep.TextSize = 8
 			sep.Text = "·"
 			sep.TextColor3 = T.DIM
-			sep.LayoutOrder = i * 2
+			sep.LayoutOrder = i * 3
 		end
 	end
 	local equipBtn = self:button(card, "⇄", UDim2.new(0, 28, 0, 28), UDim2.new(1, -62, 0.5, -14), T.PANEL, T.ACCENT, 14)
@@ -710,7 +736,6 @@ function VoidUI:teamCard(parent, name, petNames, count, lo, onEquip, onDelete)
 	delBtn.MouseButton1Click:Connect(function() if onDelete then onDelete() end end)
 	return card
 end
-
 return VoidUI
 
 
