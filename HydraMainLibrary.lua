@@ -788,6 +788,219 @@ end
 
 
 
+
+function VoidUI:timingEditor(acInner, pageFrame, CFG, D, saveD)
+	local T = self.T
+
+
+	local defaults = {
+		ahEquipDelay       = 0.15,
+		ahUnequipDelay     = 0.10,
+		postUnequipBuffer  = 0.50,
+		koiSafeDelay       = 1.00,
+		koiPostHatch       = 1.50,
+		sealSafeDelay      = 1.00,
+		sealPostSell       = 2.00,
+	}
+	for k, v in pairs(defaults) do
+		if D.autoHatch[k] == nil then D.autoHatch[k] = v end
+	end
+
+	
+	local function syncCFG()
+		CFG.AH_EQUIP_DELAY   = D.autoHatch.ahEquipDelay
+		CFG.AH_UNEQUIP_DELAY = D.autoHatch.ahUnequipDelay
+	end
+	syncCFG()
+
+	
+	local teBtn = self:button(
+		acInner,
+		"⏱  Timing Editor",
+		UDim2.new(1, 0, 0, 24),
+		nil,
+		Color3.fromRGB(20, 15, 40),
+		Color3.fromRGB(160, 140, 255),
+		9
+	)
+	self:stroke(teBtn, Color3.fromRGB(80, 60, 140), 1)
+	teBtn.TextXAlignment = Enum.TextXAlignment.Left
+	self:pad(teBtn, 0, 8, 8, 0)
+
+	
+	local overlay = self:frame(pageFrame, UDim2.new(1, 0, 1, 0), nil, T.BG)
+	overlay.Visible = false
+	overlay.ZIndex  = 20
+
+	
+	local ohdr = self:frame(overlay, UDim2.new(1, 0, 0, 26), nil, T.PANEL)
+	self:stroke(ohdr, T.STROKE, 1)
+	self:label(ohdr, "⏱  TIMING EDITOR", UDim2.new(1, -80, 1, 0), UDim2.new(0, 8, 0, 0), T.ACCENT, 10)
+	local closeBtn = self:button(ohdr, "← Back", UDim2.new(0, 54, 0, 20), UDim2.new(1, -58, 0.5, -10), T.BTN, T.DIM, 8)
+	self:stroke(closeBtn, T.STROKE, 1)
+	closeBtn.MouseButton1Click:Connect(function() overlay.Visible = false end)
+
+
+	local sc = self:scroll(overlay, UDim2.new(1, 0, 1, -26), UDim2.new(0, 0, 0, 26))
+	sc.ScrollBarThickness = 3
+	sc.ScrollBarImageColor3 = T.ACCENT
+	local inner = Instance.new("Frame", sc)
+	inner.Size = UDim2.new(1, 0, 0, 0)
+	inner.BackgroundTransparency = 1
+	inner.AutomaticSize = Enum.AutomaticSize.Y
+	self:list(inner, 4)
+	self:pad(inner, 6, 6, 6, 20)
+
+	
+	local function secHdr(label, lo)
+		local f = self:frame(inner, UDim2.new(1, 0, 0, 14), nil, T.BG, 1)
+		f.LayoutOrder = lo
+		local l = self:label(f, label, UDim2.new(1, 0, 1, 0), nil, Color3.fromRGB(70, 70, 110), 8)
+		l.Font = Enum.Font.GothamBold
+		return f
+	end
+
+	
+	local function kvRow(label, badge, badgeColor, dataKey, lo)
+		local row = self:frame(inner, UDim2.new(1, 0, 0, 24), nil, T.BTN)
+		row.LayoutOrder = lo
+		self:corner(row, 4)
+		self:stroke(row, T.STROKE, 1)
+
+	
+		local lbl = self:label(row, label, UDim2.new(1, -130, 1, 0), UDim2.new(0, 8, 0, 0), T.DIM, 9)
+		lbl.Font = Enum.Font.Gotham
+
+	
+		local bdg = self:frame(row, UDim2.new(0, 34, 0, 14), UDim2.new(1, -122, 0.5, -7), badgeColor)
+		self:corner(bdg, 3)
+		local bdgLbl = self:label(bdg, badge, UDim2.new(1, 0, 1, 0), nil, Color3.fromRGB(200, 200, 220), 7, Enum.TextXAlignment.Center)
+		bdgLbl.Font = Enum.Font.GothamBold
+
+		
+		local valLbl = self:label(row, string.format("%.2f", D.autoHatch[dataKey]), UDim2.new(0, 36, 1, 0), UDim2.new(1, -82, 0, 0), T.ACCENT, 10, Enum.TextXAlignment.Right)
+		valLbl.Font = Enum.Font.GothamBold
+
+	
+		local unitLbl = self:label(row, "sec", UDim2.new(0, 24, 1, 0), UDim2.new(1, -44, 0, 0), Color3.fromRGB(60, 60, 90), 8, Enum.TextXAlignment.Left)
+		unitLbl.Font = Enum.Font.Gotham
+
+		local editBtn = self:button(row, "✎", UDim2.new(0, 20, 0, 18), UDim2.new(1, -22, 0.5, -9), T.PANEL, T.ACCENT, 10)
+		self:stroke(editBtn, T.STROKE, 1)
+
+		
+		local inp = self:input(row, D.autoHatch[dataKey], "", UDim2.new(0, 46, 0, 18), UDim2.new(1, -68, 0.5, -9))
+		inp.Visible = false
+		inp.ZIndex = 5
+
+		editBtn.MouseButton1Click:Connect(function()
+			if inp.Visible then
+				inp.Visible = false
+				editBtn.Text = "✎"
+				local v = tonumber(inp.Text)
+				if v and v >= 0 then
+					D.autoHatch[dataKey] = v
+					valLbl.Text = string.format("%.2f", v)
+					syncCFG()
+					saveD()
+				else
+					inp.Text = string.format("%.2f", D.autoHatch[dataKey])
+				end
+			else
+				inp.Visible = true
+				inp.Text = string.format("%.2f", D.autoHatch[dataKey])
+				editBtn.Text = "✓"
+				inp:CaptureFocus()
+			end
+		end)
+
+		inp.FocusLost:Connect(function()
+			inp.Visible = false
+			editBtn.Text = "✎"
+			local v = tonumber(inp.Text)
+			if v and v >= 0 then
+				D.autoHatch[dataKey] = v
+				valLbl.Text = string.format("%.2f", v)
+				syncCFG()
+				saveD()
+			else
+				inp.Text = string.format("%.2f", D.autoHatch[dataKey])
+			end
+		end)
+
+		return row, valLbl
+	end
+
+	
+	local totalLabels = {}
+	local function totalRow(label, id, lo, accent)
+		local row = self:frame(inner, UDim2.new(1, 0, 0, 22), nil, Color3.fromRGB(8, 8, 18))
+		row.LayoutOrder = lo
+		self:corner(row, 4)
+		self:stroke(row, accent and T.ACCENT or T.STROKE, 1)
+		local lbl = self:label(row, label, UDim2.new(1, -60, 1, 0), UDim2.new(0, 8, 0, 0), accent and Color3.fromRGB(180, 180, 210) or T.DIM, 8)
+		lbl.Font = Enum.Font.Gotham
+		local val = self:label(row, "–", UDim2.new(0, 52, 1, 0), UDim2.new(1, -56, 0, 0), accent and Color3.fromRGB(200, 180, 255) or T.ACCENT, accent and 10 or 9, Enum.TextXAlignment.Right)
+		val.Font = Enum.Font.GothamBold
+		totalLabels[id] = val
+		return row
+	end
+
+	
+	local valRefs = {}
+	local function recalc()
+		local n    = 8
+		local eq   = D.autoHatch.ahEquipDelay      or 0.15
+		local uneq = D.autoHatch.ahUnequipDelay     or 0.10
+		local buf  = D.autoHatch.postUnequipBuffer  or 0.50
+		local ks   = D.autoHatch.koiSafeDelay       or 1.00
+		local kp   = D.autoHatch.koiPostHatch        or 1.50
+		local ss   = D.autoHatch.sealSafeDelay      or 1.00
+		local sp   = D.autoHatch.sealPostSell        or 2.00
+		local koi  = (uneq*n) + buf + (eq*n) + ks + kp
+		local seal = (uneq*n) + buf + (eq*n) + ss + sp
+		if totalLabels["koi"]   then totalLabels["koi"].Text   = string.format("%.2fs", koi)        end
+		if totalLabels["seal"]  then totalLabels["seal"].Text  = string.format("%.2fs", seal)       end
+		if totalLabels["grand"] then totalLabels["grand"].Text = string.format("%.2fs", koi + seal) end
+	end
+
+	
+	local COLOR_ALL  = Color3.fromRGB(30, 20, 50)
+	local COLOR_KOI  = Color3.fromRGB(10, 20, 50)
+	local COLOR_SEAL = Color3.fromRGB(10, 40, 20)
+
+	secHdr("EQUIP / UNEQUIP", 1)
+	local _, v1 = kvRow("Equip delay (per pet)",     "ALL",  COLOR_ALL,  "ahEquipDelay",      2)
+	local _, v2 = kvRow("Unequip delay (per pet)",   "ALL",  COLOR_ALL,  "ahUnequipDelay",    3)
+	local _, v3 = kvRow("Post-unequip buffer",        "ALL",  COLOR_ALL,  "postUnequipBuffer", 4)
+
+	secHdr("KOI TEAM", 5)
+	local _, v4 = kvRow("Safety delay (post-verified)", "KOI",  COLOR_KOI,  "koiSafeDelay",  6)
+	local _, v5 = kvRow("Post-hatch delay",              "KOI",  COLOR_KOI,  "koiPostHatch",  7)
+
+	secHdr("SEAL TEAM", 8)
+	local _, v6 = kvRow("Safety delay (post-verified)", "SEAL", COLOR_SEAL, "sealSafeDelay", 9)
+	local _, v7 = kvRow("Post-sell delay",               "SEAL", COLOR_SEAL, "sealPostSell",  10)
+
+	
+	local div = self:divider(inner, 11)
+
+	
+	totalRow("Koi fixed total (8 pet)",       "koi",   12, false)
+	totalRow("Seal fixed total (8 pet)",       "seal",  13, false)
+	totalRow("Grand total (Koi + Seal)",       "grand", 14, true)
+
+	recalc()
+
+	teBtn.MouseButton1Click:Connect(function()
+		recalc()
+		overlay.Visible = true
+	end)
+
+	return teBtn, overlay
+end
+
+
 return VoidUI
 
 
