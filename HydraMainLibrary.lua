@@ -378,9 +378,13 @@ function VoidUI:inlinePickerDropdown(rowParent, overlayParent, config)
 			overlay.Visible = false
 			searchBox.Text = ""
 		else
-			local abs = row.AbsolutePosition
-			local absSize = row.AbsoluteSize
-			overlay.Position = UDim2.new(0, abs.X, 0, abs.Y + absSize.Y + 4)
+			task.defer(function()
+				local parentSize = overlayParent.AbsoluteSize
+				local overlaySize = overlay.AbsoluteSize
+				local centerX = math.max(0, (parentSize.X - overlaySize.X) / 2)
+				local centerY = math.max(0, (parentSize.Y - overlaySize.Y) / 2)
+				overlay.Position = UDim2.new(0, centerX, 0, centerY)
+			end)
 			rebuild("")
 			overlay.Visible = true
 		end
