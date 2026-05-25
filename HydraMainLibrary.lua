@@ -818,7 +818,7 @@ function VoidUI:timingEditor(acInner, pageFrame, CFG, D, saveD)
 
 	local teBtn = self:button(
 		acInner,
-		"⏱  Timing Editor  >",
+		"⏱  Timing Editor",
 		UDim2.new(1, 0, 0, 24),
 		nil,
 		Color3.fromRGB(20, 15, 40),
@@ -826,7 +826,10 @@ function VoidUI:timingEditor(acInner, pageFrame, CFG, D, saveD)
 		9
 	)
 	self:stroke(teBtn, Color3.fromRGB(80, 60, 140), 1)
-	teBtn.TextXAlignment = Enum.TextXAlignment.Center
+	teBtn.TextXAlignment = Enum.TextXAlignment.Left
+	self:pad(teBtn, 0, 8, 8, 0)
+	local teBtnArrow = self:label(teBtn, ">", UDim2.new(0, 16, 1, 0), UDim2.new(1, -20, 0, 0), Color3.fromRGB(100, 80, 180), 11, Enum.TextXAlignment.Center)
+	teBtnArrow.Font = Enum.Font.GothamBold
 
 	local overlay = self:frame(pageFrame, UDim2.new(1, 0, 1, 0), nil, T.BG)
 	overlay.Visible = false
