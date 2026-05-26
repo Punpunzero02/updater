@@ -962,6 +962,43 @@ function VoidUI:timingEditor(acInner, pageFrame, CFG, D, saveD)
 	return teBtn, overlay
 end
 
+
+function VoidUI:logPanel(parent, lo, maxLines)
+	local T = self.T
+	maxLines = maxLines or 45
+	local panel = self:frame(parent, UDim2.new(1,0,0,64), nil, T.PANEL)
+	panel.LayoutOrder = lo
+	self:stroke(panel, T.STROKE, 1)
+	local hdr = self:frame(panel, UDim2.new(1,0,0,14), nil, T.BG, 1)
+	self:label(hdr, "LOGS", UDim2.new(1,0,1,0), UDim2.new(0,6,0,0), T.ACCENT, 8).Font = Enum.Font.GothamBold
+	local scroll = self:scroll(panel, UDim2.new(1,-4,1,-16), UDim2.new(0,2,0,15))
+	self:list(scroll, 1); self:pad(scroll, 1,4,4,1)
+	local count = 0
+	local function addLog(msg, col)
+		count = count + 1
+		local row = Instance.new("TextLabel")
+		row.Size = UDim2.new(1,0,0,12)
+		row.BackgroundTransparency = 1
+		row.Text = os.date("%H:%M:%S").."  "..msg
+		row.TextColor3 = col or T.DIM
+		row.Font = Enum.Font.Gotham
+		row.TextSize = 8
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextTruncate = Enum.TextTruncate.AtEnd
+		row.LayoutOrder = count
+		row.Parent = scroll
+		local kids = {}
+		for _, c in ipairs(scroll:GetChildren()) do
+			if c:IsA("TextLabel") then table.insert(kids, c) end
+		end
+		while #kids > maxLines do kids[1]:Destroy(); table.remove(kids, 1) end
+		task.defer(function() scroll.CanvasPosition = Vector2.new(0, math.huge) end)
+	end
+	return panel, addLog, hdr
+end
+
+
+
 return VoidUI
 
 
