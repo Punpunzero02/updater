@@ -997,7 +997,7 @@ function VoidUI:logPanel(parent, lo, maxLines)
 	return panel, addLog, hdr
 end
 
--
+
 function VoidUI:boostStatusRow(parent, lo)
 	local T = self.T
 	local row = self:frame(parent, UDim2.new(1,0,0,24), nil, T.PANEL)
