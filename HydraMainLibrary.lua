@@ -997,7 +997,19 @@ function VoidUI:logPanel(parent, lo, maxLines)
 	return panel, addLog, hdr
 end
 
-
+-
+function VoidUI:boostStatusRow(parent, lo)
+	local T = self.T
+	local row = self:frame(parent, UDim2.new(1,0,0,24), nil, T.PANEL)
+	row.LayoutOrder = lo
+	self:stroke(row, T.STROKE, 1)
+	local lbl = self:label(row, "BOOST STATUS", UDim2.new(0,100,1,0), UDim2.new(0,8,0,0), T.DIM, 8)
+	lbl.Font = Enum.Font.Gotham
+	local val = self:label(row, "—", UDim2.new(1,-112,1,0), UDim2.new(0,114,0,0), T.DIM, 8, Enum.TextXAlignment.Right)
+	val.Font = Enum.Font.Gotham
+	val.TextTruncate = Enum.TextTruncate.AtEnd
+	return row, val
+end
 
 return VoidUI
 
