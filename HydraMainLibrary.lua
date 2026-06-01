@@ -1011,6 +1011,155 @@ function VoidUI:boostStatusRow(parent, lo)
 	return row, val
 end
 
+
+function VoidUI:modePickerRow(parent, config)
+
+	local T = self.T
+	local modes     = config.modes or {}
+	local selectedKey = config.default or (modes[1] and modes[1].key)
+	local _cb       = config.onSelect
+
+
+	local row = self:frame(parent, config.size or UDim2.new(1,0,0,28), config.pos, T.BTN)
+	self:corner(row, 5)
+	self:stroke(row, T.STROKE, 1)
+
+
+	local labelW = 0
+	if config.label then
+		local lbl = self:label(row, config.label, UDim2.new(0,90,1,0), UDim2.new(0,6,0,0), T.DIM, 9)
+		lbl.Font = Enum.Font.Gotham
+		labelW = 96
+	end
+
+
+	local function getSelName()
+		for _, m in ipairs(modes) do
+			if m.key == selectedKey then return m.name end
+		end
+		return "Select..."
+	end
+	local valLbl = self:label(row,
+		getSelName(),
+		UDim2.new(1, -(labelW+22), 1, 0),
+		UDim2.new(0, labelW+2, 0, 0),
+		T.ACCENT, 9, Enum.TextXAlignment.Left)
+	valLbl.Font = Enum.Font.GothamBold
+
+	
+	local arrowLbl = self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-18,0,0), T.DIM, 8, Enum.TextXAlignment.Center)
+
+	local overlay = self:frame(parent, UDim2.new(1,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(3,3,3))
+	overlay.AutomaticSize = Enum.AutomaticSize.Y
+	overlay.Visible = false
+	overlay.ZIndex = 40
+	self:corner(overlay, 6)
+	self:stroke(overlay, T.ACCENT, 1)
+
+	local innerList = self:frame(overlay, UDim2.new(1,0,0,0), nil, Color3.fromRGB(3,3,3), 0)
+	innerList.AutomaticSize = Enum.AutomaticSize.Y
+	self:list(innerList, 4)
+	self:pad(innerList, 6, 6, 6, 6)
+	innerList.ZIndex = 40
+
+	local cardRefs = {}
+
+	local function refreshCards()
+		for _, ref in ipairs(cardRefs) do
+			local isSel = ref.key == selectedKey
+			ref.card.BackgroundColor3   = isSel and Color3.fromRGB(30,20,60) or Color3.fromRGB(10,10,18)
+			local s = ref.card:FindFirstChildOfClass("UIStroke")
+			if s then s.Color = isSel and T.ACCENT or T.STROKE end
+			ref.badge.BackgroundColor3  = isSel and T.ACCENT or Color3.fromRGB(40,30,80)
+			ref.nameLbl.TextColor3      = isSel and T.ACCENT or T.TEXT
+		end
+	end
+
+	for i, mode in ipairs(modes) do
+		local isSel = mode.key == selectedKey
+		local card = self:frame(innerList, UDim2.new(1,0,0,46), nil,
+			isSel and Color3.fromRGB(30,20,60) or Color3.fromRGB(10,10,18))
+		card.LayoutOrder = i
+		card.ZIndex = 41
+		self:corner(card, 5)
+		self:stroke(card, isSel and T.ACCENT or T.STROKE, 1)
+
+		
+		local badge = self:frame(card, UDim2.new(0,22,0,22), UDim2.new(0,6,0.5,-11),
+			isSel and T.ACCENT or Color3.fromRGB(40,30,80))
+		badge.ZIndex = 42
+		self:corner(badge, 4)
+		local badgeLbl = self:label(badge, tostring(mode.key), UDim2.new(1,0,1,0), nil,
+			Color3.fromRGB(255,255,255), 10, Enum.TextXAlignment.Center)
+		badgeLbl.Font = Enum.Font.GothamBold
+		badgeLbl.ZIndex = 42
+
+	
+		local nameLbl = self:label(card, mode.name,
+			UDim2.new(1,-36,0,16), UDim2.new(0,34,0,4),
+			isSel and T.ACCENT or T.TEXT, 9)
+		nameLbl.Font = Enum.Font.GothamBold
+		nameLbl.ZIndex = 42
+
+
+		local descLbl = self:label(card, mode.desc,
+			UDim2.new(1,-36,0,14), UDim2.new(0,34,0,22),
+			T.DIM, 8)
+		descLbl.Font = Enum.Font.Gotham
+		descLbl.ZIndex = 42
+		descLbl.TextWrapped = true
+		descLbl.TextTruncate = Enum.TextTruncate.None
+
+	
+		local hit = self:button(card, "", UDim2.new(1,0,1,0), nil, T.BTN, T.TEXT)
+		hit.BackgroundTransparency = 1
+		hit.ZIndex = 43
+		local capturedKey = mode.key
+		hit.MouseButton1Click:Connect(function()
+			selectedKey = capturedKey
+			valLbl.Text = getSelName()
+			refreshCards()
+			overlay.Visible = false
+			arrowLbl.Text = "▼"
+			if _cb then _cb(capturedKey) end
+		end)
+
+		table.insert(cardRefs, {
+			key     = mode.key,
+			card    = card,
+			badge   = badge,
+			nameLbl = nameLbl,
+		})
+	end
+
+
+	local hitRow = self:button(row, "", UDim2.new(1,0,1,0), nil, T.BTN, T.TEXT)
+	hitRow.BackgroundTransparency = 1
+	hitRow.ZIndex = 5
+	hitRow.MouseButton1Click:Connect(function()
+		overlay.Visible = not overlay.Visible
+		arrowLbl.Text = overlay.Visible and "▲" or "▼"
+		if overlay.Visible then
+			
+			local rowAbsY = row.AbsolutePosition.Y
+			local parentAbsY = parent.AbsolutePosition.Y
+			local relY = (rowAbsY - parentAbsY) + row.AbsoluteSize.Y + 2
+			overlay.Position = UDim2.new(0, 0, 0, relY)
+		end
+	end)
+
+	return {
+		row     = row,
+		overlay = overlay,
+		Get     = function() return selectedKey end,
+		Set     = function(k)
+			selectedKey = k
+			valLbl.Text = getSelName()
+			refreshCards()
+		end,
+	}
+end
+
 return VoidUI
 
 
