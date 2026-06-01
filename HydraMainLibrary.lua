@@ -1047,14 +1047,15 @@ function VoidUI:modePickerRow(parent, config)
 	local arrowLbl = self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-18,0,0), T.DIM, 8, Enum.TextXAlignment.Center)
 
 	local overlay = self:frame(overlayParent, UDim2.new(1,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(3,3,3))
-	overlay.AutomaticSize = Enum.AutomaticSize.None
-	overlay.Size = UDim2.new(1,0,0,150)
+	overlay.AutomaticSize = Enum.AutomaticSize.Y
 	overlay.Visible = false
 	overlay.ZIndex = 40
 	self:corner(overlay, 6)
 	self:stroke(overlay, T.ACCENT, 1)
 
-	local ovScroll = self:scroll(overlay, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0))
+	local ovScroll = self:scroll(overlay, UDim2.new(1,0,0,0), UDim2.new(0,0,0,0))
+	ovScroll.AutomaticSize = Enum.AutomaticSize.Y
+	ovScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	ovScroll.ScrollBarThickness = 3
 	ovScroll.ScrollBarImageColor3 = T.ACCENT
 	ovScroll.ZIndex = 40
