@@ -1018,12 +1018,11 @@ function VoidUI:modePickerRow(parent, config)
 	local modes     = config.modes or {}
 	local selectedKey = config.default or (modes[1] and modes[1].key)
 	local _cb       = config.onSelect
-
+	local overlayParent = config.overlayParent or parent
 
 	local row = self:frame(parent, config.size or UDim2.new(1,0,0,28), config.pos, T.BTN)
 	self:corner(row, 5)
 	self:stroke(row, T.STROKE, 1)
-
 
 	local labelW = 0
 	if config.label then
@@ -1031,7 +1030,6 @@ function VoidUI:modePickerRow(parent, config)
 		lbl.Font = Enum.Font.Gotham
 		labelW = 96
 	end
-
 
 	local function getSelName()
 		for _, m in ipairs(modes) do
@@ -1046,10 +1044,9 @@ function VoidUI:modePickerRow(parent, config)
 		T.ACCENT, 9, Enum.TextXAlignment.Left)
 	valLbl.Font = Enum.Font.GothamBold
 
-	
 	local arrowLbl = self:label(row, "▼", UDim2.new(0,14,1,0), UDim2.new(1,-18,0,0), T.DIM, 8, Enum.TextXAlignment.Center)
 
-	local overlay = self:frame(parent, UDim2.new(1,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(3,3,3))
+	local overlay = self:frame(overlayParent, UDim2.new(1,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(3,3,3))
 	overlay.AutomaticSize = Enum.AutomaticSize.Y
 	overlay.Visible = false
 	overlay.ZIndex = 40
@@ -1084,7 +1081,6 @@ function VoidUI:modePickerRow(parent, config)
 		self:corner(card, 5)
 		self:stroke(card, isSel and T.ACCENT or T.STROKE, 1)
 
-		
 		local badge = self:frame(card, UDim2.new(0,22,0,22), UDim2.new(0,6,0.5,-11),
 			isSel and T.ACCENT or Color3.fromRGB(40,30,80))
 		badge.ZIndex = 42
@@ -1094,13 +1090,11 @@ function VoidUI:modePickerRow(parent, config)
 		badgeLbl.Font = Enum.Font.GothamBold
 		badgeLbl.ZIndex = 42
 
-	
 		local nameLbl = self:label(card, mode.name,
 			UDim2.new(1,-36,0,16), UDim2.new(0,34,0,4),
 			isSel and T.ACCENT or T.TEXT, 9)
 		nameLbl.Font = Enum.Font.GothamBold
 		nameLbl.ZIndex = 42
-
 
 		local descLbl = self:label(card, mode.desc,
 			UDim2.new(1,-36,0,14), UDim2.new(0,34,0,22),
@@ -1110,7 +1104,6 @@ function VoidUI:modePickerRow(parent, config)
 		descLbl.TextWrapped = true
 		descLbl.TextTruncate = Enum.TextTruncate.None
 
-	
 		local hit = self:button(card, "", UDim2.new(1,0,1,0), nil, T.BTN, T.TEXT)
 		hit.BackgroundTransparency = 1
 		hit.ZIndex = 43
@@ -1132,7 +1125,6 @@ function VoidUI:modePickerRow(parent, config)
 		})
 	end
 
-
 	local hitRow = self:button(row, "", UDim2.new(1,0,1,0), nil, T.BTN, T.TEXT)
 	hitRow.BackgroundTransparency = 1
 	hitRow.ZIndex = 5
@@ -1140,9 +1132,8 @@ function VoidUI:modePickerRow(parent, config)
 		overlay.Visible = not overlay.Visible
 		arrowLbl.Text = overlay.Visible and "▲" or "▼"
 		if overlay.Visible then
-			
 			local rowAbsY = row.AbsolutePosition.Y
-			local parentAbsY = parent.AbsolutePosition.Y
+			local parentAbsY = overlayParent.AbsolutePosition.Y
 			local relY = (rowAbsY - parentAbsY) + row.AbsoluteSize.Y + 2
 			overlay.Position = UDim2.new(0, 0, 0, relY)
 		end
