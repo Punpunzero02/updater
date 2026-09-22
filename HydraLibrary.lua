@@ -1098,8 +1098,8 @@ function HydraUI:picker(guiParent, config)
 end
 
 function HydraUI:window(guiParent, w, h, title)
-    local W = w or self:s(420)
-    local H = h or self:s(290)
+    local W = w and self:s(w) or self:s(560)
+    local H = h and self:s(h) or self:s(380)
 
     local main = self:frame(guiParent,
         UDim2.new(0, W, 0, H),
