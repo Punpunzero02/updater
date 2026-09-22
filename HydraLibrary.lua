@@ -33,6 +33,7 @@ function HydraUI.new(theme)
     self._trackedElements = {}
     self._trackedStrokes  = {}
     self._scaledElements  = {}
+    self._windowRescalers = {}
     self.isMobile = isMobileDevice()
     self.viewport = getViewport()
     self.autoScaleEnabled = true
@@ -71,13 +72,23 @@ function HydraUI:setScale(newScale, fromAuto)
     else
         self.scale = math.clamp(newScale, self.isMobile and 0.55 or 0.6, self.isMobile and 2.2 or 3.0)
     end
-    for _, t in ipairs(self._scaledElements) do
-        if t.elem and t.elem.Parent then
-            pcall(function()
-                t.elem[t.prop] = math.floor(t.base * self.scale + 0.5)
-            end)
+    if #self._windowRescalers > 0 then
+        for _, fn in ipairs(self._windowRescalers) do
+            pcall(fn)
+        end
+    else
+        for _, t in ipairs(self._scaledElements) do
+            if t.elem and t.elem.Parent then
+                pcall(function()
+                    t.elem[t.prop] = math.floor(t.base * self.scale + 0.5)
+                end)
+            end
         end
     end
+end
+
+function HydraUI:registerWindowRescaler(fn)
+    table.insert(self._windowRescalers, fn)
 end
 
 function HydraUI:resetAutoScale()
@@ -1101,8 +1112,6 @@ function HydraUI:window(guiParent, w, h, title)
     main.ClipsDescendants = true
     self:trackElement(main, "BG", "BackgroundColor3")
 
-    local function recomputeAutoFit() end
-
     local tbar = self:frame(main, UDim2.new(1, 0, 0, 24), nil, "PANEL")
     self:corner(tbar, 7)
     self:stroke(tbar, self.T.STROKE, 1)
@@ -1154,6 +1163,24 @@ function HydraUI:window(guiParent, w, h, title)
         end)
     end
 
+    local baseW, baseH = W, H
+
+    local function rescaleContentToWindow()
+        local curW = main.Size.X.Offset
+        local curH = main.Size.Y.Offset
+        if curW <= 0 or curH <= 0 or baseW <= 0 or baseH <= 0 then return end
+        local growth = math.min(curW / baseW, curH / baseH)
+        growth = math.max(growth, 1.0)
+        local target = self.scale * growth
+        for _, t in ipairs(self._scaledElements) do
+            if t.elem and t.elem.Parent then
+                pcall(function()
+                    t.elem[t.prop] = math.floor(t.base * target + 0.5)
+                end)
+            end
+        end
+    end
+
     do
         local resizing, startPos, startSize = false, nil, nil
         local minW = self.isMobile and 220 or 320
@@ -1176,17 +1203,19 @@ function HydraUI:window(guiParent, w, h, title)
                     0,
                     math.max(minH, startSize.Y + i.Position.Y - startPos.Y)
                 )
-                recomputeAutoFit()
+                rescaleContentToWindow()
             end
         end)
         UIS.InputEnded:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1
             or i.UserInputType == Enum.UserInputType.Touch then
                 resizing = false
-                recomputeAutoFit()
+                rescaleContentToWindow()
             end
         end)
     end
+
+    self:registerWindowRescaler(rescaleContentToWindow)
 
     local floatBtn = Instance.new("ImageButton", guiParent)
     floatBtn.Size             = UDim2.new(0, 30, 0, 30)
