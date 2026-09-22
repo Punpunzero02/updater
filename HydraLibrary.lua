@@ -21,9 +21,9 @@ local function computeAutoScale(isMobile)
 	local vp = getViewport()
 	local ratio = math.min(vp.X / REF_VIEWPORT.X, vp.Y / REF_VIEWPORT.Y)
 	if isMobile then
-		return math.clamp(ratio, 0.55, 1.0)
+		return math.clamp(ratio, 1.0, 2.2)
 	else
-		return math.clamp(ratio, 0.6, 3.0)
+		return math.clamp(ratio, 1.0, 3.0)
 	end
 end
 
@@ -66,7 +66,11 @@ end
 
 function HydraUI:setScale(newScale, fromAuto)
     if not fromAuto then self.autoScaleEnabled = false end
-    self.scale = math.clamp(newScale, self.isMobile and 0.55 or 0.6, self.isMobile and 1.0 or 3.0)
+    if fromAuto then
+        self.scale = math.clamp(newScale, 1.0, self.isMobile and 2.2 or 3.0)
+    else
+        self.scale = math.clamp(newScale, self.isMobile and 0.55 or 0.6, self.isMobile and 2.2 or 3.0)
+    end
     for _, t in ipairs(self._scaledElements) do
         if t.elem and t.elem.Parent then
             pcall(function()
@@ -1097,35 +1101,7 @@ function HydraUI:window(guiParent, w, h, title)
     main.ClipsDescendants = true
     self:trackElement(main, "BG", "BackgroundColor3")
 
-    local autoFit = Instance.new("UIScale")
-    autoFit.Name = "AutoFitScale"
-    autoFit.Parent = main
-
-    local function recomputeAutoFit()
-        local vp = getViewport()
-        local curW = main.Size.X.Offset
-        local curH = main.Size.Y.Offset
-        if curW <= 0 then curW = W end
-        if curH <= 0 then curH = H end
-        local safeFracX = self.isMobile and 0.94 or 0.92
-        local safeFracY = self.isMobile and 0.85 or 0.90
-        local fitX = (vp.X * safeFracX) / curW
-        local fitY = (vp.Y * safeFracY) / curH
-        local fit = math.min(1, fitX, fitY)
-        fit = math.max(fit, self.isMobile and 0.5 or 0.4)
-        autoFit.Scale = fit
-
-    end
-    recomputeAutoFit()
-
-    local vpConn = workspace.CurrentCamera and workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-        self.viewport = getViewport()
-        self.isMobile = isMobileDevice()
-        recomputeAutoFit()
-    end)
-    main.AncestryChanged:Connect(function(_, parent)
-        if not parent and vpConn then vpConn:Disconnect() end
-    end)
+    local function recomputeAutoFit() end
 
     local tbar = self:frame(main, UDim2.new(1, 0, 0, 24), nil, "PANEL")
     self:corner(tbar, 7)
