@@ -4,7 +4,28 @@ HydraUI.__index = HydraUI
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 
+local REF_VIEWPORT = Vector2.new(1366, 768)
 
+local function isMobileDevice()
+	return UIS.TouchEnabled
+		and not UIS.KeyboardEnabled
+		and not UIS.MouseEnabled
+end
+
+local function getViewport()
+	local cam = workspace.CurrentCamera
+	return cam and cam.ViewportSize or Vector2.new(1366, 768)
+end
+
+local function computeAutoScale(isMobile)
+	local vp = getViewport()
+	local ratio = math.min(vp.X / REF_VIEWPORT.X, vp.Y / REF_VIEWPORT.Y)
+	if isMobile then
+		return math.clamp(ratio, 0.55, 1.0)
+	else
+		return math.clamp(ratio, 0.6, 3.0)
+	end
+end
 
 function HydraUI.new(theme)
     local self = setmetatable({}, HydraUI)
@@ -12,11 +33,24 @@ function HydraUI.new(theme)
     self._trackedElements = {}
     self._trackedStrokes  = {}
     self._scaledElements  = {}
-    self.scale = 1.0
+    self.isMobile = isMobileDevice()
+    self.viewport = getViewport()
+    self.autoScaleEnabled = true
+    self.scale = computeAutoScale(self.isMobile)
+
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            self.viewport = getViewport()
+            self.isMobile = isMobileDevice()
+            if self.autoScaleEnabled then
+                self:setScale(computeAutoScale(self.isMobile), true)
+            end
+        end)
+    end
+
     return self
 end
-
-
 
 function HydraUI:trackElement(elem, colorKey, prop)
     table.insert(self._trackedElements, { elem = elem, colorKey = colorKey, prop = prop })
@@ -30,8 +64,9 @@ function HydraUI:trackScaled(elem, prop, baseVal)
     table.insert(self._scaledElements, { elem = elem, prop = prop, base = baseVal })
 end
 
-function HydraUI:setScale(newScale)
-    self.scale = math.clamp(newScale, 0.6, 3.0)
+function HydraUI:setScale(newScale, fromAuto)
+    if not fromAuto then self.autoScaleEnabled = false end
+    self.scale = math.clamp(newScale, self.isMobile and 0.55 or 0.6, self.isMobile and 1.0 or 3.0)
     for _, t in ipairs(self._scaledElements) do
         if t.elem and t.elem.Parent then
             pcall(function()
@@ -39,6 +74,13 @@ function HydraUI:setScale(newScale)
             end)
         end
     end
+end
+
+function HydraUI:resetAutoScale()
+    self.autoScaleEnabled = true
+    self.viewport = getViewport()
+    self.isMobile = isMobileDevice()
+    self:setScale(computeAutoScale(self.isMobile), true)
 end
 
 function HydraUI:trackStroke(stroke, colorKey)
@@ -61,16 +103,12 @@ function HydraUI:applyTheme(newTheme)
     end
 end
 
-
-
--- UICorner
 function HydraUI:corner(parent, radius)
     local c = Instance.new("UICorner", parent)
     c.CornerRadius = UDim.new(0, radius or 4)
     return c
 end
 
--- UIStroke (default STROKE key)
 function HydraUI:stroke(parent, col, thickness)
     local s = Instance.new("UIStroke", parent)
     s.Color = col or self.T.STROKE
@@ -80,7 +118,6 @@ function HydraUI:stroke(parent, col, thickness)
     return s
 end
 
--- UIStroke with specific colorKey tracking
 function HydraUI:strokeKeyed(parent, colorKey, thickness)
     local s = Instance.new("UIStroke", parent)
     s.Color = self.T[colorKey] or self.T.STROKE
@@ -90,7 +127,6 @@ function HydraUI:strokeKeyed(parent, colorKey, thickness)
     return s
 end
 
--- Frame
 function HydraUI:frame(parent, sz, pos, bgKey, transparency)
     local f = Instance.new("Frame")
     f.Size               = sz  or UDim2.new(1, 0, 1, 0)
@@ -105,7 +141,6 @@ function HydraUI:frame(parent, sz, pos, bgKey, transparency)
     return f
 end
 
--- TextLabel
 function HydraUI:label(parent, text, sz, pos, colorKey, fontSize, xAlign)
     local l = Instance.new("TextLabel")
     l.Size               = sz  or UDim2.new(1, 0, 0, 14)
@@ -125,7 +160,6 @@ function HydraUI:label(parent, text, sz, pos, colorKey, fontSize, xAlign)
     return l
 end
 
--- TextButton
 function HydraUI:button(parent, text, sz, pos, bgKey, textColorKey, fontSize)
     local b = Instance.new("TextButton")
     b.Size             = sz  or UDim2.new(0, 60, 0, 20)
@@ -145,7 +179,6 @@ function HydraUI:button(parent, text, sz, pos, bgKey, textColorKey, fontSize)
     return b
 end
 
--- TextBox
 function HydraUI:input(parent, default, placeholder, sz, pos)
     local b = Instance.new("TextBox")
     b.Size               = sz  or UDim2.new(0, 60, 0, 18)
@@ -168,7 +201,6 @@ function HydraUI:input(parent, default, placeholder, sz, pos)
     return b
 end
 
--- ScrollingFrame
 function HydraUI:scroll(parent, sz, pos)
     local s = Instance.new("ScrollingFrame")
     s.Size                = sz  or UDim2.new(1, 0, 1, 0)
@@ -184,7 +216,6 @@ function HydraUI:scroll(parent, sz, pos)
     return s
 end
 
--- UIListLayout
 function HydraUI:listLayout(parent, padding)
     local l = Instance.new("UIListLayout", parent)
     l.Padding    = UDim.new(0, padding or 3)
@@ -192,7 +223,6 @@ function HydraUI:listLayout(parent, padding)
     return l
 end
 
--- UIPadding
 function HydraUI:padding(parent, t, l, r, b)
     local p = Instance.new("UIPadding", parent)
     p.PaddingTop    = UDim.new(0, t or 0)
@@ -202,10 +232,6 @@ function HydraUI:padding(parent, t, l, r, b)
     return p
 end
 
-
-
--- Toggle Switch
--- returns { Set(bool), Get(), Frame }
 function HydraUI:toggle(parent, pos, init, onChange, big)
     local W  = self:s(big and 34 or 26)
     local H  = self:s(big and 16 or 12)
@@ -246,8 +272,6 @@ function HydraUI:toggle(parent, pos, init, onChange, big)
     }
 end
 
-
--- returns { card, header, body }
 function HydraUI:card(parent, sz, pos, strokeColorKey)
     local colorKey = strokeColorKey or "STROKE"
     local c = self:frame(parent, sz, pos, "CARD")
@@ -262,7 +286,6 @@ function HydraUI:card(parent, sz, pos, strokeColorKey)
     return { card = c, header = hdr, body = body }
 end
 
--- Section Header Label
 function HydraUI:sectionHeader(parent, text, layoutOrder)
     local l = self:label(parent, text, UDim2.new(1, 0, 0, 10), nil, "ACCENT", 7)
     l.Font        = Enum.Font.GothamBold
@@ -270,10 +293,6 @@ function HydraUI:sectionHeader(parent, text, layoutOrder)
     return l
 end
 
--- Tab Bar
--- tabs = { "Tab1", "Tab2", ... }
--- onSwitch(index) callback
--- returns { bar, buttons={}, setActive(i) }
 function HydraUI:tabBar(parent, tabs, onSwitch, colorKey)
     local accentKey = colorKey or "ACCENT"
     local bar = self:frame(parent, UDim2.new(1, 0, 0, 18), nil, "PANEL")
@@ -310,8 +329,6 @@ function HydraUI:tabBar(parent, tabs, onSwitch, colorKey)
     return { bar = bar, buttons = btns, setActive = setActive }
 end
 
--- Log Panel
--- returns { panel, append(msg, color), clear() }
 function HydraUI:logPanel(parent, sz, pos, maxLines)
     local max  = maxLines or 30
     local n    = 0
@@ -370,8 +387,6 @@ function HydraUI:logPanel(parent, sz, pos, maxLines)
     return { panel = outer, append = append, clear = clear }
 end
 
--- Search Bar
--- returns { bar, box (TextBox) }
 function HydraUI:searchBar(parent, sz, pos, placeholder)
     local bar = self:frame(parent, sz or UDim2.new(1, -6, 0, 16), pos or UDim2.new(0, 3, 0, 3), "ROW")
     self:corner(bar, 3)
@@ -395,8 +410,6 @@ function HydraUI:searchBar(parent, sz, pos, placeholder)
     return { bar = bar, box = box }
 end
 
--- Stat Box (for queue: Pending / Listed / Free Slots)
--- returns numLabel yang bisa di-set .Text
 function HydraUI:statBox(parent, x, colorKey, labelText)
     local card = self:frame(parent, UDim2.new(0, 52, 1, 0), UDim2.new(0, x, 0, 0), "CARD")
     self:corner(card, 3)
@@ -423,10 +436,6 @@ function HydraUI:statBox(parent, x, colorKey, labelText)
     return numLbl
 end
 
--- Listing Row (market/booth)
--- data = { petType, mutName, mutCode, level, weight, price, sellerName }
--- onBuy = function(btn, data)
--- returns row Frame
 function HydraUI:listingRow(parent, data, layoutOrder, onBuy)
     local isAlt = layoutOrder % 2 == 0
     local row   = self:frame(parent, UDim2.new(1, -2, 0, 18), nil, isAlt and "ROW_ALT" or "ROW")
@@ -469,9 +478,6 @@ function HydraUI:listingRow(parent, data, layoutOrder, onBuy)
     return row
 end
 
--- Confirm Dialog overlay
--- config = { title, lines = { {key, value} }, onConfirm, onCancel, accentKey }
--- returns overlay Frame
 function HydraUI:confirmDialog(guiParent, config)
     local accentKey = config.accentKey or "ACCENT"
     local lines     = config.lines or {}
@@ -566,10 +572,6 @@ function HydraUI:confirmDialog(guiParent, config)
     return overlay
 end
 
--- Buy Confirm Dialog (specific version for hydra script)
--- listing = { petType, mutName, level, weight, price }
--- onConfirm = function()
--- returns overlay Frame
 function HydraUI:buyConfirmDialog(guiParent, listing, onConfirm)
     local overlay = Instance.new("Frame")
     overlay.Name                   = "BuyConfirmOverlay"
@@ -687,14 +689,6 @@ function HydraUI:buyConfirmDialog(guiParent, listing, onConfirm)
     return overlay
 end
 
--- Pet Picker Overlay
--- config = {
---    petList       = { { name, egg } },   -- array of pet entries
---    selectedPet   = "PetName" or nil,
---    onSelect      = function(petName or nil),
---    zIndex        = number (default 60),
--- }
--- returns { overlay, open(curSel), close() }
 function HydraUI:petPicker(guiParent, config)
     local zIdx    = config.zIndex or 60
     local petList = config.petList or {}
@@ -817,14 +811,6 @@ function HydraUI:petPicker(guiParent, config)
     return { overlay = overlay, open = open, close = close }
 end
 
--- Mutation Picker Overlay (multi-select)
--- config = {
---    mutationList  = { { code, name } },  -- array, first entry  {code="ANY",name="Any"}
---    selectedMuts  = {},                   -- table of selected codes
---    onSelect      = function(selectedList),
---    zIndex        = number (default 60),
--- }
--- returns { overlay, open(curMuts, cb), close() }
 function HydraUI:mutationPicker(guiParent, config)
     local zIdx       = config.zIndex or 60
     local mutList    = config.mutationList or {}
@@ -956,16 +942,6 @@ function HydraUI:mutationPicker(guiParent, config)
     return { overlay = overlay, open = open, close = close }
 end
 
--- Generic Picker Overlay (Pet atau Mutation, single/multi)
--- config = {
---    title, strokeColorKey,
---    items = { {name, sub, key} },
---    multiSelect = bool,
---    selected = {} or string,
---    onSelect = function(result),
---    searchPlaceholder,
--- }
--- returns { overlay, open(), close() }
 function HydraUI:picker(guiParent, config)
     local strokeKey = config.strokeColorKey or "ACCENT"
     local multi     = config.multiSelect or false
@@ -1106,8 +1082,6 @@ function HydraUI:picker(guiParent, config)
     return { overlay = overlay, open = open, close = close }
 end
 
--- Draggable Window
--- returns { main, titleBar, closeBtn, minBtn, floatBtn, titleLbl }
 function HydraUI:window(guiParent, w, h, title)
     local W = w or self:s(420)
     local H = h or self:s(290)
@@ -1123,7 +1097,36 @@ function HydraUI:window(guiParent, w, h, title)
     main.ClipsDescendants = true
     self:trackElement(main, "BG", "BackgroundColor3")
 
-    -- Title bar
+    local autoFit = Instance.new("UIScale")
+    autoFit.Name = "AutoFitScale"
+    autoFit.Parent = main
+
+    local function recomputeAutoFit()
+        local vp = getViewport()
+        local curW = main.Size.X.Offset
+        local curH = main.Size.Y.Offset
+        if curW <= 0 then curW = W end
+        if curH <= 0 then curH = H end
+        local safeFracX = self.isMobile and 0.94 or 0.92
+        local safeFracY = self.isMobile and 0.85 or 0.90
+        local fitX = (vp.X * safeFracX) / curW
+        local fitY = (vp.Y * safeFracY) / curH
+        local fit = math.min(1, fitX, fitY)
+        fit = math.max(fit, self.isMobile and 0.5 or 0.4)
+        autoFit.Scale = fit
+
+    end
+    recomputeAutoFit()
+
+    local vpConn = workspace.CurrentCamera and workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+        self.viewport = getViewport()
+        self.isMobile = isMobileDevice()
+        recomputeAutoFit()
+    end)
+    main.AncestryChanged:Connect(function(_, parent)
+        if not parent and vpConn then vpConn:Disconnect() end
+    end)
+
     local tbar = self:frame(main, UDim2.new(1, 0, 0, 24), nil, "PANEL")
     self:corner(tbar, 7)
     self:stroke(tbar, self.T.STROKE, 1)
@@ -1145,7 +1148,6 @@ function HydraUI:window(guiParent, w, h, title)
     self:trackElement(minBtn, "BTN", "BackgroundColor3")
     self:trackElement(minBtn, "DIM", "TextColor3")
 
-    -- Resizer
     local resizer = self:button(main, "↘",
         UDim2.new(0, 16, 0, 16), UDim2.new(1, -16, 1, -16),
         "BTN", "ACCENT", 10)
@@ -1154,7 +1156,6 @@ function HydraUI:window(guiParent, w, h, title)
     self:trackElement(resizer, "BTN",    "BackgroundColor3")
     self:trackElement(resizer, "ACCENT", "TextColor3")
 
-    -- Drag logic
     do
         local drag, dInp, sPos, sMP = false, nil, nil, nil
         tbar.InputBegan:Connect(function(i)
@@ -1177,15 +1178,17 @@ function HydraUI:window(guiParent, w, h, title)
         end)
     end
 
-    -- Resize logic
     do
         local resizing, startPos, startSize = false, nil, nil
+        local minW = self.isMobile and 220 or 320
+        local minH = self.isMobile and 160 or 200
         resizer.InputBegan:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1
             or i.UserInputType == Enum.UserInputType.Touch then
                 resizing  = true
                 startPos  = i.Position
-                startSize = Vector2.new(main.AbsoluteSize.X, main.AbsoluteSize.Y)
+
+                startSize = Vector2.new(main.Size.X.Offset, main.Size.Y.Offset)
             end
         end)
         UIS.InputChanged:Connect(function(i)
@@ -1193,21 +1196,22 @@ function HydraUI:window(guiParent, w, h, title)
             if i.UserInputType == Enum.UserInputType.MouseMovement
             or i.UserInputType == Enum.UserInputType.Touch then
                 main.Size = UDim2.new(0,
-                    math.max(320, startSize.X + i.Position.X - startPos.X),
+                    math.max(minW, startSize.X + i.Position.X - startPos.X),
                     0,
-                    math.max(200, startSize.Y + i.Position.Y - startPos.Y)
+                    math.max(minH, startSize.Y + i.Position.Y - startPos.Y)
                 )
+                recomputeAutoFit()
             end
         end)
         UIS.InputEnded:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1
             or i.UserInputType == Enum.UserInputType.Touch then
                 resizing = false
+                recomputeAutoFit()
             end
         end)
     end
 
-    -- Float button
     local floatBtn = Instance.new("ImageButton", guiParent)
     floatBtn.Size             = UDim2.new(0, 30, 0, 30)
     floatBtn.Position         = UDim2.new(0, 14, 0.5, -15)
@@ -1242,14 +1246,6 @@ function HydraUI:window(guiParent, w, h, title)
     }
 end
 
-
-
-
-
-
-
--- tabs = { { label, colorKey } }
--- returns { bar, buttons={}, pages={}, switchTo(i) }
 function HydraUI:sidebar(parent, tabs)
     local bar = self:frame(parent, UDim2.new(0, 46, 1, -24), UDim2.new(0, 0, 0, 24), "PANEL")
     self:stroke(bar, self.T.STROKE, 1)
@@ -1299,8 +1295,6 @@ function HydraUI:sidebar(parent, tabs)
     return { bar = bar, buttons = btns, pages = pages, switchTo = switchTo }
 end
 
-
-
 function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	local zIdx = config.zIndex or 70
 	local strokeKey = config.strokeColorKey or "ACCENT"
@@ -1342,7 +1336,6 @@ function HydraUI:inlinePicker(rowParent, overlayParent, config)
 	local xBtn = self:button(ohdr, "x", UDim2.new(0,14,0,14), UDim2.new(1,-17,0.5,-7), "ERROR", "TEXT", 8)
 	xBtn.ZIndex = zIdx+1
 
-	-- DRAG LOGIC
 	do
 		local dragging, dragStart, startPos = false, nil, nil
 		ohdr.InputBegan:Connect(function(i)
@@ -1597,7 +1590,6 @@ function HydraUI:loadingScreen(config)
         end)
     end
 
-    -- Animasi
     TS:Create(Logo, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {ImageTransparency=0}):Play()
 
     task.spawn(function()
